@@ -1,21 +1,51 @@
 use ratatui::{
     Frame,
-    layout::{Constraint, Layout},
-    widgets::{Block, Borders, Paragraph},
+    layout::{Alignment, Constraint, Layout, Rect},
+    text::Line,
+    widgets::{Block, BorderType, Borders, Paragraph},
 };
 
 use crate::app::App;
 
-pub fn render(frame: &mut Frame, _app: &App) {
-    let layout = Layout::vertical([Constraint::Min(1), Constraint::Max(3)]).split(frame.area());
+pub fn render(frame: &mut Frame, app: &App) {
+    let layout = Layout::vertical([
+        Constraint::Length(3),
+        Constraint::Min(1),
+        Constraint::Length(3),
+    ])
+    .split(frame.area());
 
-    let main_block = Block::new().borders(Borders::ALL);
-    let welcome_text =
-        Paragraph::new("Welcome to the Terminal Typing Test (TTT)!").block(main_block);
+    render_header(frame, &layout[0], app);
+    render_body(frame, &layout[1], app);
+    render_footer(frame, &layout[2], app);
+}
 
-    let tooltips_block = Block::new().borders(Borders::ALL);
-    let tooltips_text = Paragraph::new("(q) to exit").block(tooltips_block);
+fn render_header(frame: &mut Frame, area: &Rect, _app: &App) {
+    let block = Block::new()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded);
 
-    frame.render_widget(&welcome_text, layout[0]);
-    frame.render_widget(&tooltips_text, layout[1]);
+    let text = Paragraph::new(Line::from("TTT").alignment(Alignment::Center)).block(block);
+
+    frame.render_widget(&text, *area);
+}
+
+fn render_body(frame: &mut Frame, area: &Rect, _app: &App) {
+    let block = Block::new()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded);
+
+    let text = Paragraph::new("Welcome to the Terminal Typing Test (TTT)!").block(block);
+
+    frame.render_widget(&text, *area);
+}
+
+fn render_footer(frame: &mut Frame, area: &Rect, _app: &App) {
+    let block = Block::new()
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded);
+
+    let text = Paragraph::new(" Quit: q").block(block);
+
+    frame.render_widget(&text, *area);
 }
