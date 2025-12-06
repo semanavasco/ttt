@@ -6,7 +6,7 @@ use ratatui::{
 
 use crate::app::App;
 
-pub fn ui(frame: &mut Frame, _app: &App) {
+pub fn render(frame: &mut Frame, _app: &App) {
     let layout = Layout::vertical([Constraint::Min(1), Constraint::Max(3)]).split(frame.area());
 
     let main_block = Block::new().borders(Borders::ALL);

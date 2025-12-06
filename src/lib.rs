@@ -6,11 +6,11 @@ use std::io;
 use crossterm::event::{self, Event, KeyCode};
 use ratatui::{Terminal, prelude::Backend};
 
-use crate::{app::App, ui::ui};
+use crate::app::App;
 
 pub fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), io::Error> {
     while !app.should_quit {
-        terminal.draw(|frame| ui(frame, app))?;
+        terminal.draw(|frame| ui::render(frame, app))?;
 
         // Handle Key Events
         if let Event::Key(key) = event::read()? {
