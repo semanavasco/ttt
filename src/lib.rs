@@ -11,7 +11,7 @@ use ratatui::{Terminal, prelude::Backend};
 
 use crate::app::{App, State};
 
-pub fn run_app<B: Backend>(terminal: &mut Terminal<B>, app: &mut App) -> Result<(), io::Error> {
+pub fn run_app(terminal: &mut Terminal<impl Backend>, app: &mut App) -> Result<(), io::Error> {
     loop {
         terminal.draw(|frame| ui::render(frame, app))?;
 

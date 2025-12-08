@@ -2,52 +2,33 @@ use std::time::Instant;
 
 use ratatui::{
     Frame,
-    layout::{Alignment, Constraint, Layout, Rect},
+    layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style},
+    symbols,
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
+    widgets::{Block, BorderType, Borders, Padding, Paragraph, Wrap},
 };
 
 use crate::app::{App, State};
 
 pub fn render(frame: &mut Frame, app: &App) {
-    let layout = Layout::vertical([
-        Constraint::Length(3),
-        Constraint::Min(1),
-        Constraint::Length(3),
-    ])
-    .split(frame.area());
+    let layout = Layout::vertical([Constraint::Min(10), Constraint::Length(3)]).split(frame.area());
 
-    render_header(frame, &layout[0], app);
-    render_body(frame, &layout[1], app);
-    render_footer(frame, &layout[2], app);
+    render_body(frame, layout[0], app);
+    render_footer(frame, layout[1], app);
 }
 
-fn render_header(frame: &mut Frame, area: &Rect, _app: &App) {
+fn render_body(frame: &mut Frame, rect: Rect, app: &App) {
     let block = Block::new()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded);
-
-    let text = Paragraph::new(Line::from("TTT").alignment(Alignment::Center)).block(block);
-
-    frame.render_widget(text, *area);
-}
-
-fn render_body(frame: &mut Frame, area: &Rect, app: &App) {
-    let block = Block::new()
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded);
+        .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+        .border_type(BorderType::Rounded)
+        .padding(Padding::symmetric(4, 2))
+        .title(Line::from(" TTT ").centered());
 
     match app.state {
         State::NotStarted => {
-            let text = Paragraph::new(vec![
-                Line::from("30")
-                    .style(
-                        Style::default()
-                            .fg(Color::Magenta)
-                            .add_modifier(Modifier::BOLD),
-                    )
-                    .centered(),
+            let paragraph = Paragraph::new(vec![
+                Line::from(""),
                 Line::from(
                     app.target_text
                         .chars()
@@ -61,13 +42,12 @@ fn render_body(frame: &mut Frame, area: &Rect, app: &App) {
                         })
                         .collect::<Vec<Span>>(),
                 )
-                .centered()
                 .style(Style::default().fg(Color::DarkGray)),
             ])
             .wrap(Wrap { trim: false })
             .block(block);
 
-            frame.render_widget(text, *area);
+            frame.render_widget(paragraph, rect);
         }
         State::Started => {
             let mut text: Vec<Span> = vec![];
@@ -109,14 +89,13 @@ fn render_body(frame: &mut Frame, area: &Rect, app: &App) {
                     Style::default()
                         .fg(Color::Magenta)
                         .add_modifier(Modifier::BOLD),
-                )
-                .centered(),
-                Line::from(text).centered(),
+                ),
+                Line::from(text),
             ])
-            .block(block)
-            .wrap(Wrap { trim: false });
+            .wrap(Wrap { trim: false })
+            .block(block);
 
-            frame.render_widget(paragraph, *area);
+            frame.render_widget(paragraph, rect);
         }
         State::Ended => {
             let wpm = app.calculate_wpm();
@@ -141,23 +120,27 @@ fn render_body(frame: &mut Frame, area: &Rect, app: &App) {
                     .style(Style::default().fg(Color::Magenta)),
             ];
 
-            let paragraph = Paragraph::new(stats).block(block);
-            frame.render_widget(paragraph, *area);
+            frame.render_widget(Paragraph::new(stats).block(block), rect);
         }
     }
 }
 
-fn render_footer(frame: &mut Frame, area: &Rect, _app: &App) {
+fn render_footer(frame: &mut Frame, rect: Rect, app: &App) {
     let block = Block::new()
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded);
+        .border_type(BorderType::Rounded)
+        .border_set(symbols::border::Set {
+            top_left: symbols::line::NORMAL.vertical_right,
+            top_right: symbols::line::NORMAL.vertical_left,
+            ..symbols::border::ROUNDED
+        });
 
-    let text = Paragraph::new(match _app.state {
+    let text = Paragraph::new(match app.state {
         State::NotStarted => " Quit: ESC | Start typing to launch test...",
         State::Started => " Quit: ESC | Restart: TAB | Backspace: delete",
         State::Ended => " Quit: ESC | Restart: TAB",
     })
     .block(block);
 
-    frame.render_widget(text, *area);
+    frame.render_widget(text, rect);
 }
