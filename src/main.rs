@@ -1,33 +1,13 @@
 use std::io;
 
-use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture},
-    execute,
-    terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
-};
-use ratatui::{Terminal, prelude::CrosstermBackend};
-use ttt::{app::App, run_app};
+use ttt::app::{self, state::State};
 
-fn main() -> Result<(), io::Error> {
-    // Setting up the terminal
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
+fn main() -> io::Result<()> {
+    let mut terminal = ratatui::init();
 
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let mut state = State::default();
+    let result = app::run(&mut terminal, &mut state);
 
-    // Creating and running the app
-    let mut app = App::default();
-    run_app(&mut terminal, &mut app)?;
-
-    // Restoring terminal
-    disable_raw_mode()?;
-    execute!(
-        terminal.backend_mut(),
-        LeaveAlternateScreen,
-        DisableMouseCapture
-    )?;
-    terminal.show_cursor()?;
-    Ok(())
+    ratatui::restore();
+    result
 }
