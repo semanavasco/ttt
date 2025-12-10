@@ -24,7 +24,7 @@ mod tests {
     }
 
     #[test]
-    fn other_is_absent(){ 
+    fn other_is_absent() {
         let other = Resource::get("test.other");
 
         assert!(other.is_none());
