@@ -3,17 +3,17 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
-    defaults: Defaults,
+    pub defaults: Defaults,
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct Defaults {
     #[serde(default = "default_text")]
-    text: String,
+    pub text: String,
 
     #[serde(flatten)]
     #[serde(default)]
-    mode: DefaultMode,
+    pub mode: DefaultMode,
 }
 
 impl Default for Defaults {
@@ -34,7 +34,7 @@ fn default_text() -> String {
 pub enum DefaultMode {
     Clock {
         #[serde(default = "default_clock_duration")]
-        duration: u16,
+        duration: u64,
     },
 }
 
@@ -46,7 +46,7 @@ impl Default for DefaultMode {
     }
 }
 
-fn default_clock_duration() -> u16 {
+fn default_clock_duration() -> u64 {
     30
 }
 
