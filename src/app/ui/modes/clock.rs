@@ -129,7 +129,6 @@ fn get_typing_spans<'a>(target_words: &'a [String], typed_words: &'a [String]) -
 
         let is_current_word = word_idx == cursor_pos.0;
         let is_past_word = word_idx < cursor_pos.0;
-        let is_future_word = word_idx > cursor_pos.0;
 
         // Render each character of the target word
         for (char_idx, &target_char) in target_chars.iter().enumerate() {
@@ -145,8 +144,6 @@ fn get_typing_spans<'a>(target_words: &'a [String], typed_words: &'a [String]) -
                 }
             } else if is_past_word || (is_current_word && char_idx < cursor_pos.1) {
                 SKIPPED_STYLE
-            } else if is_future_word || char_idx > cursor_pos.1 {
-                PENDING_STYLE
             } else {
                 PENDING_STYLE
             };

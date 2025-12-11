@@ -39,10 +39,9 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
                             typed_words.iter_mut().enumerate().last()
                             && let Some(target_word) = target_words.get(typed_idx)
                             && typed_word != target_word
+                            && typed_word.pop().is_none()
                         {
-                            if typed_word.pop() == None {
-                                typed_words.pop();
-                            }
+                            typed_words.pop();
                         }
                     }
                 },
@@ -62,12 +61,10 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
                             }
                         } else if c == ' ' {
                             typed_words.push(String::new());
+                        } else if let Some(word) = typed_words.last_mut() {
+                            word.push(c);
                         } else {
-                            if let Some(word) = typed_words.last_mut() {
-                                word.push(c);
-                            } else {
-                                typed_words.push(c.to_string());
-                            }
+                            typed_words.push(c.to_string());
                         }
                     }
                 },
