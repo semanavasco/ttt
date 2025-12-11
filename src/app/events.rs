@@ -83,18 +83,19 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
                 },
                 _ => {}
             },
-            Menu::Done => match key.code {
-                KeyCode::Esc => state.exit = true,
-                _ => {}
-            },
+            Menu::Done => {
+                if key.code == KeyCode::Esc {
+                    state.exit = true
+                }
+            }
         }
     }
     Ok(())
 }
 
 pub fn handle_is_done(state: &mut State) {
-    match state.menu {
-        Menu::Running => match state.mode {
+    if let Menu::Running = state.menu {
+        match state.mode {
             Mode::Clock {
                 duration, start, ..
             } => {
@@ -104,7 +105,6 @@ pub fn handle_is_done(state: &mut State) {
                     state.menu = Menu::Done;
                 }
             }
-        },
-        _ => {}
+        }
     }
 }
