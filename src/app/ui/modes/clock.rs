@@ -79,7 +79,7 @@ impl<'a> ClockMode<'a> {
         let wpm = if self.typed_words.is_empty() {
             0.0
         } else {
-            self.typed_words.len() as f64 / 0.5
+            self.typed_words.len() as f64 / (self.duration.as_secs_f64() / 60.0)
         };
 
         let accuracy = if self.target_words.is_empty() {
