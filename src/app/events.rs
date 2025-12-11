@@ -88,3 +88,20 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
     }
     Ok(())
 }
+
+pub fn handle_is_done(state: &mut State) {
+    match state.menu {
+        Menu::Running => match state.mode {
+            Mode::Clock {
+                duration, start, ..
+            } => {
+                if let Some(start_time) = start
+                    && start_time.elapsed() >= duration
+                {
+                    state.menu = Menu::Done;
+                }
+            }
+        },
+        _ => {}
+    }
+}
