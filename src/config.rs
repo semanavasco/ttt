@@ -10,6 +10,8 @@ pub struct Config {
 pub struct Defaults {
     #[serde(default = "default_text")]
     pub text: String,
+    #[serde(default = "default_word_count")]
+    pub words: u16,
 
     #[serde(flatten)]
     #[serde(default)]
@@ -20,6 +22,7 @@ impl Default for Defaults {
     fn default() -> Self {
         Defaults {
             text: default_text(),
+            words: default_word_count(),
             mode: DefaultMode::default(),
         }
     }
@@ -27,6 +30,10 @@ impl Default for Defaults {
 
 fn default_text() -> String {
     "lorem.txt".to_string()
+}
+
+fn default_word_count() -> u16 {
+    100
 }
 
 #[derive(Serialize, Deserialize)]
@@ -63,6 +70,7 @@ mod tests {
 
         assert!(config.contains("[defaults]"));
         assert!(config.contains("text = \"lorem.txt\""));
+        assert!(config.contains("words = 100"));
         assert!(config.contains("mode = \"clock\""));
         assert!(config.contains("duration = 30"));
     }
