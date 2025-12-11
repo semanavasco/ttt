@@ -1,10 +1,19 @@
-use std::{io, time::Instant};
+use std::{
+    io,
+    time::{Duration, Instant},
+};
 
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers, poll};
 
 use crate::app::state::{Menu, Mode, State};
 
 pub fn handle_events(state: &mut State) -> io::Result<()> {
+    // Prevent blocking event read
+    if !poll(Duration::from_millis(100))? {
+        return Ok(());
+    }
+
+    // Handle events
     if let Event::Key(key) = event::read()? {
         if key.kind == KeyEventKind::Release {
             return Ok(());
@@ -57,7 +66,11 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
                                 && let Some(target_word) = target_words.get(typed_idx)
                                 && typed_word != target_word
                             {
-                                typed_words.pop();
+                                if typed_word.is_empty() {
+                                    typed_words.pop();
+                                } else {
+                                    typed_word.clear();
+                                }
                             }
                         } else if c == ' ' {
                             typed_words.push(String::new());
