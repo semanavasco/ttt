@@ -1,6 +1,6 @@
 use std::{io, time::Instant};
 
-use crossterm::event::{self, Event, KeyCode, KeyEventKind};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
 
 use crate::app::state::{Menu, Mode, State};
 
@@ -30,17 +30,37 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
             Menu::Running => match key.code {
                 KeyCode::Esc => state.exit = true,
                 KeyCode::Backspace => match &mut state.mode {
-                    Mode::Clock { typed_words, .. } => {
-                        if let Some(last_word) = typed_words.last_mut() {
-                            if last_word.pop() == None {
+                    Mode::Clock {
+                        typed_words,
+                        target_words,
+                        ..
+                    } => {
+                        if let Some((typed_idx, typed_word)) =
+                            typed_words.iter_mut().enumerate().last()
+                            && let Some(target_word) = target_words.get(typed_idx)
+                            && typed_word != target_word
+                        {
+                            if typed_word.pop() == None {
                                 typed_words.pop();
                             }
                         }
                     }
                 },
                 KeyCode::Char(c) => match &mut state.mode {
-                    Mode::Clock { typed_words, .. } => {
-                        if c == ' ' {
+                    Mode::Clock {
+                        typed_words,
+                        target_words,
+                        ..
+                    } => {
+                        if c == 'h' && key.modifiers.contains(KeyModifiers::CONTROL) {
+                            if let Some((typed_idx, typed_word)) =
+                                typed_words.iter_mut().enumerate().last()
+                                && let Some(target_word) = target_words.get(typed_idx)
+                                && typed_word != target_word
+                            {
+                                typed_words.pop();
+                            }
+                        } else if c == ' ' {
                             typed_words.push(String::new());
                         } else {
                             if let Some(word) = typed_words.last_mut() {
