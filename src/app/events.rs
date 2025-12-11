@@ -83,7 +83,10 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
                 },
                 _ => {}
             },
-            _ => {}
+            Menu::Done => match key.code {
+                KeyCode::Esc => state.exit = true,
+                _ => {}
+            },
         }
     }
     Ok(())

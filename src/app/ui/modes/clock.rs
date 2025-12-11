@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Style},
+    style::{Color, Modifier, Style},
     text::{Line, Span},
     widgets::{Paragraph, Widget, Wrap},
 };
@@ -75,6 +75,50 @@ impl<'a> ClockMode<'a> {
         typing_paragraph.render(layout[2], buf);
     }
 
+    fn render_done(&self, area: Rect, buf: &mut Buffer) {
+        let wpm = if self.typed_words.is_empty() {
+            0.0
+        } else {
+            self.typed_words.len() as f64 / 0.5
+        };
+
+        let accuracy = if self.target_words.is_empty() {
+            0.0
+        } else {
+            let correct = self
+                .target_words
+                .iter()
+                .zip(self.typed_words)
+                .filter(|(target, typed)| target == typed)
+                .count();
+
+            (correct as f64 / self.typed_words.len() as f64) * 100.0
+        };
+
+        let stats = vec![
+            Line::from(""),
+            Line::from("Test Complete!").centered().style(
+                Style::default()
+                    .fg(Color::Green)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Line::from(""),
+            Line::from(format!("WPM: {:.1}", wpm))
+                .centered()
+                .style(Style::default().fg(Color::Cyan)),
+            Line::from(format!("Accuracy: {:.1}%", accuracy))
+                .centered()
+                .style(Style::default().fg(Color::Yellow)),
+            Line::from("Time: 30s")
+                .centered()
+                .style(Style::default().fg(Color::Magenta)),
+        ];
+
+        let paragraph = Paragraph::new(stats);
+
+        paragraph.render(area, buf);
+    }
+
     fn render_selected_config(&self, area: Rect, buf: &mut Buffer) {
         let durations = [15, 30, 60, 120];
         let current_duration = self.duration.as_secs();
@@ -107,7 +151,7 @@ impl Widget for ClockMode<'_> {
         match self.menu {
             Menu::Home => self.render_home(area, buf),
             Menu::Running => self.render_running(area, buf),
-            Menu::Done => todo!("Must implement the done menu."),
+            Menu::Done => self.render_done(area, buf),
         }
     }
 }
