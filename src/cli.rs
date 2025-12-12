@@ -3,10 +3,7 @@ use std::{path::PathBuf, time::Duration};
 use clap::Parser;
 use directories::ProjectDirs;
 
-use crate::{
-    app::state::{Mode, default_clock_duration},
-    config::Config,
-};
+use crate::config::{Config, Mode, default_clock_duration};
 
 #[derive(clap::ValueEnum, Clone)]
 pub enum ModeArg {
@@ -94,9 +91,6 @@ impl Args {
             config.defaults.mode = match mode_arg {
                 ModeArg::Clock => Mode::Clock {
                     duration: default_clock_duration(),
-                    start: None,
-                    target_words: Vec::new(),
-                    typed_words: Vec::new(),
                 },
             };
         }

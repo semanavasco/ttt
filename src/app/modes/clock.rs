@@ -14,13 +14,12 @@ use crate::{
     Resource,
     app::{
         modes::{GameStats, Handler, Renderer},
-        state::Mode,
         ui::{
             CORRECT_STYLE, CURSOR_STYLE, INCORRECT_STYLE, PENDING_STYLE, SELECTED_STYLE,
             SKIPPED_STYLE,
         },
     },
-    config::Config,
+    config::{Config, Mode},
 };
 
 pub struct Clock {
@@ -30,11 +29,22 @@ pub struct Clock {
     typed_words: Vec<String>,
 }
 
+impl Clock {
+    pub fn new(duration: Duration) -> Self {
+        Self {
+            duration,
+            start: None,
+            target_words: Vec::new(),
+            typed_words: Vec::new(),
+        }
+    }
+}
+
 impl Handler for Clock {
-    fn initialize(&mut self, config: Config) {
+    fn initialize(&mut self, config: &Config) {
         let bytes = Resource::get(&config.defaults.text)
             .map(|f| f.data.into_owned())
-            .expect(&format!("Couldn't find \"{}\" text", &config.defaults.text));
+            .unwrap_or_else(|| panic!("Couldn't find \"{}\" text", &config.defaults.text));
 
         let text: Vec<&str> = str::from_utf8(&bytes)
             .expect("Text contains non-utf8 characters")
@@ -55,7 +65,7 @@ impl Handler for Clock {
         self.typed_words.clear();
         self.start = None;
         #[allow(irrefutable_let_patterns)]
-        if let Mode::Clock { duration, .. } = &config.defaults.mode {
+        if let Mode::Clock { duration } = &config.defaults.mode {
             self.duration = *duration;
         }
     }
@@ -70,15 +80,13 @@ impl Handler for Clock {
                 if c == 'h' && key.modifiers.contains(KeyModifiers::CONTROL) {
                     if let Some((typed_idx, typed_word)) =
                         self.typed_words.iter_mut().enumerate().last()
+                        && let Some(target_word) = self.target_words.get(typed_idx)
+                        && typed_word != target_word
                     {
-                        if let Some(target_word) = self.target_words.get(typed_idx) {
-                            if typed_word != target_word {
-                                if typed_word.is_empty() {
-                                    self.typed_words.pop();
-                                } else {
-                                    typed_word.clear();
-                                }
-                            }
+                        if typed_word.is_empty() {
+                            self.typed_words.pop();
+                        } else {
+                            typed_word.clear();
                         }
                     }
                 } else if c == ' ' {
@@ -92,12 +100,11 @@ impl Handler for Clock {
             KeyCode::Backspace => {
                 if let Some((typed_idx, typed_word)) =
                     self.typed_words.iter_mut().enumerate().last()
+                    && let Some(target_word) = self.target_words.get(typed_idx)
+                    && typed_word != target_word
+                    && typed_word.pop().is_none()
                 {
-                    if let Some(target_word) = self.target_words.get(typed_idx) {
-                        if typed_word != target_word && typed_word.pop().is_none() {
-                            self.typed_words.pop();
-                        }
-                    }
+                    self.typed_words.pop();
                 }
             }
             _ => {}
@@ -113,8 +120,6 @@ impl Handler for Clock {
     }
 
     fn get_stats(&self) -> GameStats {
-        let elapsed = self.start.map_or(Duration::ZERO, |s| s.elapsed());
-
         let wpm = if self.typed_words.is_empty() {
             0.0
         } else {
@@ -137,7 +142,7 @@ impl Handler for Clock {
         GameStats {
             wpm,
             accuracy,
-            duration: elapsed,
+            duration: self.duration.as_secs_f64(),
         }
     }
 
@@ -227,7 +232,7 @@ impl Renderer for Clock {
             Line::from(format!("Accuracy: {:.1}%", game_stats.accuracy()))
                 .centered()
                 .style(Style::default().fg(Color::Yellow)),
-            Line::from(format!("Time: {:.1}s", game_stats.duration().as_secs_f64()))
+            Line::from(format!("Time: {:.1}s", game_stats.duration()))
                 .centered()
                 .style(Style::default().fg(Color::Magenta)),
         ];

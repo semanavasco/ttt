@@ -1,14 +1,12 @@
 pub mod clock;
 
-use std::time::Duration;
-
 use crossterm::event::KeyEvent;
 use ratatui::{buffer::Buffer, layout::Rect};
 
 use crate::config::Config;
 
 pub trait Handler {
-    fn initialize(&mut self, config: Config);
+    fn initialize(&mut self, config: &Config);
     fn handle_input(&mut self, key: KeyEvent);
     fn is_complete(&self) -> bool;
     fn get_stats(&self) -> GameStats;
@@ -22,11 +20,12 @@ pub trait Renderer {
 }
 
 pub trait GameMode: Handler + Renderer {}
+impl<T: Handler + Renderer> GameMode for T {}
 
 pub struct GameStats {
     wpm: f64,
     accuracy: f64,
-    duration: Duration,
+    duration: f64,
 }
 
 impl GameStats {
@@ -38,7 +37,7 @@ impl GameStats {
         self.accuracy
     }
 
-    fn duration(&self) -> Duration {
+    fn duration(&self) -> f64 {
         self.duration
     }
 }

@@ -1,5 +1,3 @@
-mod modes;
-
 use ratatui::{
     Frame,
     layout::{Constraint, Layout},
@@ -9,8 +7,7 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 
-use crate::app::state::{Menu, Mode, State};
-use modes::clock::ClockMode;
+use crate::app::state::{Menu, State};
 
 pub const SELECTED_STYLE: Style = Style::new().fg(Color::Magenta).add_modifier(Modifier::BOLD);
 pub const CORRECT_STYLE: Style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
@@ -36,17 +33,11 @@ pub fn draw(frame: &mut Frame, state: &State) {
 
     let main_area = main_block.inner(layout[0]);
 
-    match &state.mode {
-        Mode::Clock {
-            duration,
-            start,
-            target_words,
-            typed_words,
-        } => {
-            let clock_widget =
-                ClockMode::new(&state.menu, *duration, *start, target_words, typed_words);
-            frame.render_widget(clock_widget, main_area);
-        }
+    // Render mode using trait
+    match state.menu {
+        Menu::Home => state.mode.render_home(main_area, frame.buffer_mut()),
+        Menu::Running => state.mode.render_running(main_area, frame.buffer_mut()),
+        Menu::Completed => state.mode.render_complete(main_area, frame.buffer_mut()),
     }
 
     // Render footer
@@ -64,10 +55,10 @@ pub fn draw(frame: &mut Frame, state: &State) {
             vec![
                 Span::from(" Quit "),
                 Span::from("(ESC)").style(SELECTED_STYLE),
-                Span::from(" | Press any key to start your typing session..."),
+                Span::from(" | Press any key to start your typing session... "),
             ]
         }
-        Menu::Running | Menu::Done => {
+        Menu::Running | Menu::Completed => {
             vec![
                 Span::from(" Quit "),
                 Span::from("(ESC)").style(SELECTED_STYLE),

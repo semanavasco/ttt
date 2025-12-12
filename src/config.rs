@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
-use crate::app::state::Mode;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
@@ -38,10 +38,49 @@ pub fn default_word_count() -> u16 {
     100
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "mode", rename_all = "lowercase")]
+pub enum Mode {
+    Clock {
+        #[serde(default = "default_clock_duration", with = "duration_as_secs")]
+        duration: Duration,
+    },
+}
+
+pub fn default_clock_duration() -> Duration {
+    Duration::from_secs(30)
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Clock {
+            duration: default_clock_duration(),
+        }
+    }
+}
+
+mod duration_as_secs {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u64(duration.as_secs())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let seconds = u64::deserialize(deserializer)?;
+        Ok(Duration::from_secs(seconds))
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::app::state::default_clock_duration;
-
     use super::*;
 
     #[test]
