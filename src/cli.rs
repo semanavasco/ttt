@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
+#[command(version, about = "A simple Terminal Typing Test utility.", long_about = None)]
 pub struct Args {
     /// The text to get the words from
     #[arg(short, long)]
