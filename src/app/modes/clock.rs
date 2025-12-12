@@ -13,7 +13,7 @@ use ratatui::{
 use crate::{
     Resource,
     app::{
-        modes::{GameMode, GameStats, Renderer},
+        modes::{GameStats, Handler, Renderer},
         state::Mode,
         ui::{
             CORRECT_STYLE, CURSOR_STYLE, INCORRECT_STYLE, PENDING_STYLE, SELECTED_STYLE,
@@ -30,7 +30,7 @@ pub struct Clock {
     typed_words: Vec<String>,
 }
 
-impl GameMode for Clock {
+impl Handler for Clock {
     fn initialize(&mut self, config: Config) {
         let bytes = Resource::get(&config.defaults.text)
             .map(|f| f.data.into_owned())

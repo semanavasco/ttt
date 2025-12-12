@@ -7,7 +7,7 @@ use ratatui::{buffer::Buffer, layout::Rect};
 
 use crate::config::Config;
 
-pub trait GameMode {
+pub trait Handler {
     fn initialize(&mut self, config: Config);
     fn handle_input(&mut self, key: KeyEvent);
     fn is_complete(&self) -> bool;
@@ -20,6 +20,8 @@ pub trait Renderer {
     fn render_running(&self, area: Rect, buf: &mut Buffer);
     fn render_complete(&self, area: Rect, buf: &mut Buffer);
 }
+
+pub trait GameMode: Handler + Renderer {}
 
 pub struct GameStats {
     wpm: f64,
