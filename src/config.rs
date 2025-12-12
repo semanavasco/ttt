@@ -28,11 +28,11 @@ impl Default for Defaults {
     }
 }
 
-fn default_text() -> String {
+pub fn default_text() -> String {
     "lorem.txt".to_string()
 }
 
-fn default_word_count() -> u16 {
+pub fn default_word_count() -> u16 {
     100
 }
 
@@ -53,7 +53,7 @@ impl Default for DefaultMode {
     }
 }
 
-fn default_clock_duration() -> u64 {
+pub fn default_clock_duration() -> u64 {
     30
 }
 

@@ -1,6 +1,7 @@
 use rust_embed::Embed;
 
 pub mod app;
+pub mod cli;
 pub mod config;
 
 #[derive(Embed)]
