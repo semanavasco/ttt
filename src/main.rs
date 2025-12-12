@@ -7,10 +7,15 @@ use crossterm::event::{
 use crossterm::execute;
 use ttt::app::{self, state::State};
 use ttt::cli::Args;
+use ttt::config::Config;
 
 fn main() -> io::Result<()> {
     let args = Args::parse();
-    let config = args.get_config();
+    let config = if args.use_defaults() {
+        Config::default()
+    } else {
+        args.get_config()
+    };
 
     if args.should_save() {
         let config_str = match toml::to_string(&config) {

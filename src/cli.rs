@@ -39,6 +39,10 @@ pub struct Args {
     /// Save config, applies overrides provided by other arguments
     #[arg(short, long, default_value_t = false)]
     save_config: bool,
+
+    /// Use default settings
+    #[arg(long, default_value_t = false)]
+    defaults: bool,
 }
 
 impl Args {
@@ -66,6 +70,10 @@ impl Args {
 
     pub fn should_save(&self) -> bool {
         self.save_config
+    }
+
+    pub fn use_defaults(&self) -> bool {
+        self.defaults
     }
 
     pub fn config_dir(&self) -> Option<PathBuf> {
