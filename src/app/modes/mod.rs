@@ -79,12 +79,6 @@ impl Mode {
             _ => None,
         }
     }
-
-    pub fn name(&self) -> &'static str {
-        match self {
-            Mode::Clock { .. } => "clock",
-        }
-    }
 }
 
 pub fn default_clock_duration() -> Duration {
