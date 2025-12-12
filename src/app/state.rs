@@ -1,6 +1,6 @@
 use crate::{
-    app::modes::{GameMode, Handler, clock::Clock},
-    config::{Config, Mode},
+    app::modes::{GameMode, create_mode},
+    config::Config,
 };
 
 pub struct State {
@@ -11,9 +11,7 @@ pub struct State {
 
 impl State {
     pub fn from_config(config: &Config) -> Self {
-        let mut mode = match config.defaults.mode {
-            Mode::Clock { duration } => Box::new(Clock::new(duration)),
-        };
+        let mut mode = create_mode(&config.defaults.mode);
 
         mode.initialize(config);
 

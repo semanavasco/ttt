@@ -3,7 +3,10 @@ pub mod clock;
 use crossterm::event::KeyEvent;
 use ratatui::{buffer::Buffer, layout::Rect};
 
-use crate::config::Config;
+use crate::{
+    app::modes::clock::Clock,
+    config::{Config, Mode},
+};
 
 pub trait Handler {
     fn initialize(&mut self, config: &Config);
@@ -39,5 +42,11 @@ impl GameStats {
 
     fn duration(&self) -> f64 {
         self.duration
+    }
+}
+
+pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
+    match mode {
+        Mode::Clock { duration } => Box::new(Clock::new(*duration)),
     }
 }
