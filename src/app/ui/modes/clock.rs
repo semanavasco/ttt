@@ -109,7 +109,7 @@ impl<'a> ClockMode<'a> {
             Line::from(format!("Accuracy: {:.1}%", accuracy))
                 .centered()
                 .style(Style::default().fg(Color::Yellow)),
-            Line::from("Time: 30s")
+            Line::from(format!("Time: {}s", self.duration.as_secs()))
                 .centered()
                 .style(Style::default().fg(Color::Magenta)),
         ];
