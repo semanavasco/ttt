@@ -35,9 +35,12 @@ impl State {
                 target_words: {
                     let bytes = Resource::get(&config.defaults.text)
                         .map(|f| f.data.into_owned())
-                        .unwrap();
+                        .expect(&format!("Couldn't find \"{}\" text", &config.defaults.text));
 
-                    let text: Vec<&str> = str::from_utf8(&bytes).unwrap().lines().collect();
+                    let text: Vec<&str> = str::from_utf8(&bytes)
+                        .expect("Text contains non-utf8 characters")
+                        .lines()
+                        .collect();
 
                     let mut rng = rand::rng();
 

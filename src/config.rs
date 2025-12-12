@@ -31,7 +31,7 @@ impl Default for Defaults {
 }
 
 pub fn default_text() -> String {
-    "lorem.txt".to_string()
+    "lorem".to_string()
 }
 
 pub fn default_word_count() -> u16 {
@@ -52,7 +52,7 @@ mod tests {
         println!("{}", config);
 
         assert!(config.contains("[defaults]"));
-        assert!(config.contains("text = \"lorem.txt\""));
+        assert!(config.contains("text = \"lorem\""));
         assert!(config.contains("words = 100"));
         assert!(config.contains("mode = \"clock\""));
         assert!(config.contains("duration = 30"));
@@ -64,7 +64,7 @@ mod tests {
         let toml_str = "";
         let config: Config = toml::from_str(toml_str).unwrap();
 
-        assert_eq!(config.defaults.text, "lorem.txt");
+        assert_eq!(config.defaults.text, "lorem");
 
         // Partial config with count mode
         let toml_str = r#"
@@ -73,7 +73,7 @@ mod tests {
         "#;
         let config: Config = toml::from_str(toml_str).unwrap();
 
-        assert_eq!(config.defaults.text, "lorem.txt");
+        assert_eq!(config.defaults.text, "lorem");
 
         #[allow(irrefutable_let_patterns)]
         if let Mode::Clock { duration, .. } = config.defaults.mode {

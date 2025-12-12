@@ -6,7 +6,6 @@ pub mod config;
 
 #[derive(Embed)]
 #[folder = "res/"]
-#[include = "*.txt"]
 pub struct Resource;
 
 #[cfg(test)]
@@ -15,19 +14,12 @@ mod tests {
 
     #[test]
     fn lorem_is_present() {
-        let lorem_txt = Resource::get("lorem.txt");
+        let lorem_text = Resource::get("lorem");
 
-        assert!(lorem_txt.is_some());
+        assert!(lorem_text.is_some());
 
-        let lorem_txt = lorem_txt.unwrap();
+        let lorem_text = lorem_text.unwrap();
 
-        println!("{:?}", std::str::from_utf8(lorem_txt.data.as_ref()));
-    }
-
-    #[test]
-    fn other_is_absent() {
-        let other = Resource::get("test.other");
-
-        assert!(other.is_none());
+        println!("{:?}", std::str::from_utf8(lorem_text.data.as_ref()));
     }
 }
