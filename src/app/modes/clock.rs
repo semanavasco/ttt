@@ -27,6 +27,8 @@ pub struct Clock {
     start: Option<Instant>,
     target_words: Vec<String>,
     typed_words: Vec<String>,
+    text: String,
+    words: u16,
 }
 
 impl Clock {
@@ -36,15 +38,15 @@ impl Clock {
             start: None,
             target_words: Vec::new(),
             typed_words: Vec::new(),
+            text: String::new(),
+            words: 0,
         }
     }
-}
 
-impl Handler for Clock {
-    fn initialize(&mut self, config: &Config) {
-        let bytes = Resource::get(&config.defaults.text)
+    fn generate_words(&mut self) {
+        let bytes = Resource::get(&self.text)
             .map(|f| f.data.into_owned())
-            .unwrap_or_else(|| panic!("Couldn't find \"{}\" text", &config.defaults.text));
+            .unwrap_or_else(|| panic!("Couldn't find \"{}\" text", &self.text));
 
         let text: Vec<&str> = str::from_utf8(&bytes)
             .expect("Text contains non-utf8 characters")
@@ -54,7 +56,7 @@ impl Handler for Clock {
         let mut words: Vec<String> = text
             .iter()
             .cycle()
-            .take(config.defaults.words as usize)
+            .take(self.words as usize)
             .map(|s| s.to_string())
             .collect();
 
@@ -62,6 +64,14 @@ impl Handler for Clock {
         words.shuffle(&mut rng);
 
         self.target_words = words;
+    }
+}
+
+impl Handler for Clock {
+    fn initialize(&mut self, config: &Config) {
+        self.text = config.defaults.text.clone();
+        self.words = config.defaults.words;
+        self.generate_words();
         self.typed_words.clear();
         self.start = None;
         #[allow(irrefutable_let_patterns)]
@@ -147,6 +157,7 @@ impl Handler for Clock {
     }
 
     fn reset(&mut self) {
+        self.generate_words();
         self.start = None;
         self.typed_words.clear();
     }
