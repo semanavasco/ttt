@@ -1,9 +1,17 @@
-use std::path::PathBuf;
+use std::{path::PathBuf, time::Duration};
 
 use clap::Parser;
 use directories::ProjectDirs;
 
-use crate::config::{Config, DefaultMode, default_clock_duration};
+use crate::{
+    app::state::{Mode, default_clock_duration},
+    config::Config,
+};
+
+#[derive(clap::ValueEnum, Clone)]
+pub enum ModeArg {
+    Clock,
+}
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -17,8 +25,8 @@ pub struct Args {
     words: Option<u16>,
 
     /// The game mode to use
-    #[arg(short, long)]
-    mode: Option<String>,
+    #[arg(short, long, value_enum)]
+    mode: Option<ModeArg>,
 
     /// The duration of the test
     #[arg(short, long)]
@@ -74,20 +82,20 @@ impl Args {
             config.defaults.words = words;
         }
 
-        if let Some(mode) = &self.mode {
-            match mode.to_lowercase().as_str() {
-                "clock" => {
-                    config.defaults.mode = DefaultMode::Clock {
-                        duration: default_clock_duration(),
-                    }
-                }
-                _ => {}
-            }
+        if let Some(mode_arg) = &self.mode {
+            config.defaults.mode = match mode_arg {
+                ModeArg::Clock => Mode::Clock {
+                    duration: default_clock_duration(),
+                    start: None,
+                    target_words: Vec::new(),
+                    typed_words: Vec::new(),
+                },
+            };
         }
 
         if let Some(new_duration) = self.duration {
             match &mut config.defaults.mode {
-                DefaultMode::Clock { duration } => *duration = new_duration,
+                Mode::Clock { duration, .. } => *duration = Duration::from_secs(new_duration),
             }
         }
     }

@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::app::state::Mode;
+
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
@@ -15,7 +17,7 @@ pub struct Defaults {
 
     #[serde(flatten)]
     #[serde(default)]
-    pub mode: DefaultMode,
+    pub mode: Mode,
 }
 
 impl Default for Defaults {
@@ -23,7 +25,7 @@ impl Default for Defaults {
         Defaults {
             text: default_text(),
             words: default_word_count(),
-            mode: DefaultMode::default(),
+            mode: Mode::default(),
         }
     }
 }
@@ -36,29 +38,10 @@ pub fn default_word_count() -> u16 {
     100
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "mode", rename_all = "lowercase")]
-pub enum DefaultMode {
-    Clock {
-        #[serde(default = "default_clock_duration")]
-        duration: u64,
-    },
-}
-
-impl Default for DefaultMode {
-    fn default() -> Self {
-        DefaultMode::Clock {
-            duration: default_clock_duration(),
-        }
-    }
-}
-
-pub fn default_clock_duration() -> u64 {
-    30
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::app::state::default_clock_duration;
+
     use super::*;
 
     #[test]
@@ -93,8 +76,8 @@ mod tests {
         assert_eq!(config.defaults.text, "lorem.txt");
 
         #[allow(irrefutable_let_patterns)]
-        if let DefaultMode::Clock { duration } = config.defaults.mode {
-            assert_eq!(duration, 30);
+        if let Mode::Clock { duration, .. } = config.defaults.mode {
+            assert_eq!(duration, default_clock_duration());
         } else {
             panic!("Expected Clock mode");
         }
