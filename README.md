@@ -1,6 +1,6 @@
 # Terminal Typing Test
 
-A simple Terminal Typing Test utility written in Rust using ratatui, inspired by [Monkeytype](https://monkeytype.com/). 
+A simple Terminal Typing Test utility written in Rust using ratatui, inspired by [Monkeytype](https://monkeytype.com/).
 
 ## Installation
 
@@ -51,14 +51,14 @@ $ ttt --config ~/my-config.toml
 
 ## Embedded Texts
 
-| Name | Description |
-|----------|-------------|
-| `lorem` | 100 words of Lorem Ipsum (default) |
-| `english` | 100 most common English words |
-| `spanish` | 100 most common Spanish words |
-| `portuguese` | 100 most common Portuguese words |
-| `german` | 100 most common German words |
-| `swedish` | 100 most common Swedish words |
+| Name         | Description                        |
+| ------------ | ---------------------------------- |
+| `lorem`      | 100 words of Lorem Ipsum (default) |
+| `english`    | 100 most common English words      |
+| `spanish`    | 100 most common Spanish words      |
+| `portuguese` | 100 most common Portuguese words   |
+| `german`     | 100 most common German words       |
+| `swedish`    | 100 most common Swedish words      |
 
 ## Configuration
 
@@ -80,7 +80,7 @@ _CLI arguments override config file settings._
 
 ### Adding a New Game Mode
 
-1. Create `src/app/modes/newmode.rs` and implement `Handler` + `Renderer` traits: 
+1. Create `src/app/modes/newmode.rs` and implement `Handler` + `Renderer` traits:
 
 ```rust
 use crate::app::modes: :{GameStats, Handler, Renderer};
@@ -124,7 +124,7 @@ pub enum Mode {
 impl Mode {
     pub fn from_string(mode:  &str) -> Option<Self> {
         match mode {
-            "clock" => Some(Mode:: Clock { duration: default_clock_duration() }),
+            "clock" => Some(Mode::Clock { duration: default_clock_duration() }),
             /* ... */
             "newmode" => Some(Mode::NewMode { /* ...  */ }),
             _ => None,
@@ -136,7 +136,7 @@ pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
     match mode {
         Mode::Clock { duration } => Box::new(Clock::new(*duration)),
         /* ... */
-        Mode::NewMode { /* ... */ } => Box::new(NewMode:: new(/* ... */)),
+        Mode::NewMode { /* ... */ } => Box::new(NewMode::new(/* ... */)),
     }
 }
 ```
@@ -146,3 +146,7 @@ pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
 ## Feedback
 
 This is one of my first Rust projects and I'm actively learning! I'm open to suggestions, code reviews, and constructive criticism. Feel free to open issues. I'd appreciate if you'd let me fix them rather than opening PRs with written solutions. Thank you!
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
