@@ -9,7 +9,7 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Paragraph},
 };
 
-use crate::app::state::{Mode, State};
+use crate::app::state::{Menu, Mode, State};
 use modes::clock::ClockMode;
 
 pub const SELECTED_STYLE: Style = Style::new().fg(Color::Magenta).add_modifier(Modifier::BOLD);
@@ -48,11 +48,23 @@ pub fn draw(frame: &mut Frame, state: &State) {
             ..symbols::border::ROUNDED
         });
 
-    let footer = Paragraph::new(Line::from(vec![
-        Span::from(" Quit "),
-        Span::from("(ESC)").style(SELECTED_STYLE),
-        Span::from(" | Press any key to start your typing session..."),
-    ]))
+    let footer = Paragraph::new(Line::from(match state.menu {
+        Menu::Home => {
+            vec![
+                Span::from(" Quit "),
+                Span::from("(ESC)").style(SELECTED_STYLE),
+                Span::from(" | Press any key to start your typing session..."),
+            ]
+        }
+        Menu::Running | Menu::Done => {
+            vec![
+                Span::from(" Quit "),
+                Span::from("(ESC)").style(SELECTED_STYLE),
+                Span::from(" | Restart "),
+                Span::from("(TAB)").style(SELECTED_STYLE),
+            ]
+        }
+    }))
     .block(footer_block);
 
     frame.render_widget(main_block, layout[0]);

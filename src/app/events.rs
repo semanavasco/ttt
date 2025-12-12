@@ -38,6 +38,7 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
             },
             Menu::Running => match key.code {
                 KeyCode::Esc => state.exit = true,
+                KeyCode::Tab => restart(state),
                 KeyCode::Backspace => match &mut state.mode {
                     Mode::Clock {
                         typed_words,
@@ -83,11 +84,11 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
                 },
                 _ => {}
             },
-            Menu::Done => {
-                if key.code == KeyCode::Esc {
-                    state.exit = true
-                }
-            }
+            Menu::Done => match key.code {
+                KeyCode::Esc => state.exit = true,
+                KeyCode::Tab => restart(state),
+                _ => {}
+            },
         }
     }
     Ok(())
@@ -107,4 +108,17 @@ pub fn handle_is_done(state: &mut State) {
             }
         }
     }
+}
+
+pub fn restart(state: &mut State) {
+    match &mut state.mode {
+        Mode::Clock {
+            start, typed_words, ..
+        } => {
+            *start = None;
+            typed_words.clear();
+        }
+    }
+
+    state.menu = Menu::Home;
 }
