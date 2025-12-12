@@ -13,6 +13,17 @@ use crate::app::state::{Menu, Mode, State};
 use modes::clock::ClockMode;
 
 pub const SELECTED_STYLE: Style = Style::new().fg(Color::Magenta).add_modifier(Modifier::BOLD);
+pub const CORRECT_STYLE: Style = Style::new().fg(Color::Green).add_modifier(Modifier::BOLD);
+pub const INCORRECT_STYLE: Style = Style::new()
+    .fg(Color::Red)
+    .add_modifier(Modifier::BOLD)
+    .add_modifier(Modifier::UNDERLINED);
+pub const PENDING_STYLE: Style = Style::new().fg(Color::DarkGray);
+pub const SKIPPED_STYLE: Style = Style::new()
+    .fg(Color::DarkGray)
+    .add_modifier(Modifier::UNDERLINED)
+    .underline_color(Color::Red);
+pub const CURSOR_STYLE: Style = Style::new().bg(Color::White).fg(Color::DarkGray);
 
 pub fn draw(frame: &mut Frame, state: &State) {
     let layout = Layout::vertical([Constraint::Min(10), Constraint::Length(3)]).split(frame.area());

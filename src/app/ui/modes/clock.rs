@@ -8,8 +8,12 @@ use ratatui::{
     widgets::{Paragraph, Widget, Wrap},
 };
 
-use super::{CORRECT_STYLE, CURSOR_STYLE, INCORRECT_STYLE, PENDING_STYLE, SKIPPED_STYLE};
-use crate::app::{state::Menu, ui::SELECTED_STYLE};
+use crate::app::{
+    state::Menu,
+    ui::{
+        CORRECT_STYLE, CURSOR_STYLE, INCORRECT_STYLE, PENDING_STYLE, SELECTED_STYLE, SKIPPED_STYLE,
+    },
+};
 
 pub struct ClockMode<'a> {
     pub menu: &'a Menu,
