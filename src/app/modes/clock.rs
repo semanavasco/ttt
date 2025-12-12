@@ -13,13 +13,13 @@ use ratatui::{
 use crate::{
     Resource,
     app::{
-        modes::{GameStats, Handler, Renderer},
+        modes::{GameStats, Handler, Mode, Renderer},
         ui::{
             CORRECT_STYLE, CURSOR_STYLE, INCORRECT_STYLE, PENDING_STYLE, SELECTED_STYLE,
             SKIPPED_STYLE,
         },
     },
-    config::{Config, Mode},
+    config::Config,
 };
 
 pub struct Clock {

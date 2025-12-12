@@ -1,12 +1,12 @@
 pub mod clock;
 
+use std::time::Duration;
+
 use crossterm::event::KeyEvent;
 use ratatui::{buffer::Buffer, layout::Rect};
+use serde::{Deserialize, Serialize};
 
-use crate::{
-    app::modes::clock::Clock,
-    config::{Config, Mode},
-};
+use crate::{app::modes::clock::Clock, config::Config};
 
 pub trait Handler {
     fn initialize(&mut self, config: &Config);
@@ -45,8 +45,68 @@ impl GameStats {
     }
 }
 
+pub const AVAILABLE_MODES: &[&str] = &["clock"];
+
 pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
     match mode {
         Mode::Clock { duration } => Box::new(Clock::new(*duration)),
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "mode", rename_all = "lowercase")]
+pub enum Mode {
+    Clock {
+        #[serde(default = "default_clock_duration", with = "duration_as_secs")]
+        duration: Duration,
+    },
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Clock {
+            duration: default_clock_duration(),
+        }
+    }
+}
+
+impl Mode {
+    pub fn from_string(mode: &str) -> Option<Self> {
+        match mode {
+            "clock" => Some(Mode::Clock {
+                duration: default_clock_duration(),
+            }),
+            _ => None,
+        }
+    }
+
+    pub fn name(&self) -> &'static str {
+        match self {
+            Mode::Clock { .. } => "clock",
+        }
+    }
+}
+
+pub fn default_clock_duration() -> Duration {
+    Duration::from_secs(30)
+}
+
+mod duration_as_secs {
+    use serde::{self, Deserialize, Deserializer, Serializer};
+    use std::time::Duration;
+
+    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u64(duration.as_secs())
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let seconds = u64::deserialize(deserializer)?;
+        Ok(Duration::from_secs(seconds))
     }
 }
