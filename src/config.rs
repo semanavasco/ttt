@@ -40,6 +40,8 @@ pub fn default_word_count() -> u16 {
 
 #[cfg(test)]
 mod tests {
+    use crate::app::modes::default_clock_duration;
+
     use super::*;
 
     #[test]
