@@ -44,9 +44,8 @@ impl Clock {
     }
 
     fn generate_words(&mut self) {
-        let bytes = Resource::get(&self.text)
-            .map(|f| f.data.into_owned())
-            .unwrap_or_else(|| panic!("Couldn't find \"{}\" text", &self.text));
+        let bytes = Resource::get_text(&self.text)
+            .unwrap_or_else(|_| panic!("Couldn't find \"{}\" text", &self.text));
 
         let text: Vec<&str> = str::from_utf8(&bytes)
             .expect("Text contains non-utf8 characters")
