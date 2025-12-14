@@ -90,6 +90,7 @@ impl Args {
                 Mode::Clock { duration } => {
                     *duration = Duration::from_secs(new_duration);
                 }
+                _ => {}
             }
         }
     }
