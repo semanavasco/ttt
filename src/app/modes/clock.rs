@@ -28,7 +28,6 @@ pub struct Clock {
     target_words: Vec<String>,
     typed_words: Vec<String>,
     text: String,
-    words: u16,
 }
 
 impl Clock {
@@ -39,7 +38,6 @@ impl Clock {
             target_words: Vec::new(),
             typed_words: Vec::new(),
             text: String::new(),
-            words: 0,
         }
     }
 
@@ -55,7 +53,7 @@ impl Clock {
         let mut words: Vec<String> = text
             .iter()
             .cycle()
-            .take(self.words as usize)
+            .take(100)
             .map(|s| s.to_string())
             .collect();
 
@@ -69,7 +67,6 @@ impl Clock {
 impl Handler for Clock {
     fn initialize(&mut self, config: &Config) {
         self.text = config.defaults.text.clone();
-        self.words = config.defaults.words;
         self.generate_words();
         self.typed_words.clear();
         self.start = None;

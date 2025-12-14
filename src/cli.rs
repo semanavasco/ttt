@@ -15,10 +15,6 @@ pub struct Args {
     #[arg(short, long)]
     text: Option<String>,
 
-    /// The number of words
-    #[arg(short, long)]
-    words: Option<u16>,
-
     /// The game mode to use
     #[arg(short, long, value_parser = PossibleValuesParser::new(AVAILABLE_MODES))]
     mode: Option<String>,
@@ -79,10 +75,6 @@ impl Args {
     fn apply_config_overrides(&self, config: &mut Config) {
         if let Some(text) = &self.text {
             config.defaults.text = text.to_string();
-        }
-
-        if let Some(words) = self.words {
-            config.defaults.words = words;
         }
 
         if let Some(mode_name) = &self.mode {
