@@ -20,9 +20,9 @@ Usage: ttt [OPTIONS]
 
 Options:
   -t, --text <TEXT>          The text to get the words from
-  -w, --words <WORDS>        The number of words
-  -m, --mode <MODE>          The game mode to use [possible values: clock]
-  -d, --duration <DURATION>  The duration of the test
+  -w, --words <WORDS>        The number of words the test includes [modes: words]
+  -m, --mode <MODE>          The game mode to use [possible values: clock, words, ...]
+  -d, --duration <DURATION>  The duration of the test [modes: clock]
   -c, --config <CONFIG>      Read config from file
   -s, --save-config          Save config, applies overrides provided by other arguments
       --defaults             Use default settings
@@ -69,7 +69,6 @@ Config file location: `~/.config/ttt/config.toml`
 ```toml
 [defaults]
 text = "english"
-words = 100
 mode = "clock"
 duration = 30
 ```
@@ -96,6 +95,7 @@ impl Handler for NewMode {
     fn initialize(&mut self, config: &Config) { /* ... */ }
     fn handle_input(&mut self, key: KeyEvent) { /* ... */ }
     fn is_complete(&self) -> bool { /* ... */ }
+    fn handle_complete(&mut self) { /* ... */ }
     fn get_stats(&self) -> GameStats { /* ... */ }
     fn reset(&mut self) { /* ... */ }
 }

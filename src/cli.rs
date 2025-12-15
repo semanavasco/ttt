@@ -19,11 +19,11 @@ pub struct Args {
     #[arg(short, long, value_parser = PossibleValuesParser::new(AVAILABLE_MODES))]
     mode: Option<String>,
 
-    /// The duration of the test
+    /// The duration of the test [modes: clock]
     #[arg(short, long)]
     duration: Option<u64>,
 
-    /// The number of words the test includes
+    /// The number of words the test includes [modes: words]
     #[arg(short, long)]
     words: Option<usize>,
 
