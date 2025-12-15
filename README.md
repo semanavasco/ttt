@@ -75,6 +75,8 @@ duration = 30
 
 _CLI arguments override config file settings._
 
+Custom texts can be placed at: `~/.config/ttt/texts/`
+
 ## Contributing
 
 ### Adding a New Game Mode
