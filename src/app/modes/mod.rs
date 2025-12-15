@@ -1,4 +1,5 @@
 pub mod clock;
+pub mod util;
 
 use std::time::Duration;
 
@@ -12,6 +13,7 @@ pub trait Handler {
     fn initialize(&mut self, config: &Config);
     fn handle_input(&mut self, key: KeyEvent);
     fn is_complete(&self) -> bool;
+    fn handle_complete(&mut self);
     fn get_stats(&self) -> GameStats;
     fn reset(&mut self);
 }

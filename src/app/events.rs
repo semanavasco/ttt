@@ -46,6 +46,7 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
 
 pub fn handle_is_done(state: &mut State) {
     if state.mode.is_complete() {
+        state.mode.handle_complete();
         state.menu = Menu::Completed;
     }
 }
