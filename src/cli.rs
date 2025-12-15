@@ -23,6 +23,10 @@ pub struct Args {
     #[arg(short, long)]
     duration: Option<u64>,
 
+    /// The number of words the test includes
+    #[arg(short, long)]
+    words: Option<usize>,
+
     /// Read config from file
     #[arg(short, long)]
     config: Option<PathBuf>,
@@ -89,6 +93,15 @@ impl Args {
             match &mut config.defaults.mode {
                 Mode::Clock { duration } => {
                     *duration = Duration::from_secs(new_duration);
+                }
+                _ => {}
+            }
+        }
+
+        if let Some(word_count) = self.words {
+            match &mut config.defaults.mode {
+                Mode::Words { count } => {
+                    *count = word_count;
                 }
                 _ => {}
             }

@@ -1,5 +1,6 @@
 pub mod clock;
 pub mod util;
+pub mod words;
 
 use std::time::Duration;
 
@@ -7,7 +8,10 @@ use crossterm::event::KeyEvent;
 use ratatui::{buffer::Buffer, layout::Rect};
 use serde::{Deserialize, Serialize};
 
-use crate::{app::modes::clock::Clock, config::Config};
+use crate::{
+    app::modes::{clock::Clock, words::Words},
+    config::Config,
+};
 
 pub trait Handler {
     fn initialize(&mut self, config: &Config);
@@ -47,11 +51,12 @@ impl GameStats {
     }
 }
 
-pub const AVAILABLE_MODES: &[&str] = &["clock"];
+pub const AVAILABLE_MODES: &[&str] = &["clock", "words"];
 
 pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
     match mode {
         Mode::Clock { duration } => Box::new(Clock::new(*duration)),
+        Mode::Words { count } => Box::new(Words::new(*count)),
     }
 }
 
@@ -61,6 +66,11 @@ pub enum Mode {
     Clock {
         #[serde(default = "default_clock_duration", with = "duration_as_secs")]
         duration: Duration,
+    },
+
+    Words {
+        #[serde(default = "default_words_count")]
+        count: usize,
     },
 }
 
@@ -78,6 +88,9 @@ impl Mode {
             "clock" => Some(Mode::Clock {
                 duration: default_clock_duration(),
             }),
+            "words" => Some(Mode::Words {
+                count: default_words_count(),
+            }),
             _ => None,
         }
     }
@@ -85,6 +98,10 @@ impl Mode {
 
 pub fn default_clock_duration() -> Duration {
     Duration::from_secs(30)
+}
+
+pub fn default_words_count() -> usize {
+    50
 }
 
 mod duration_as_secs {
