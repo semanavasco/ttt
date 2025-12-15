@@ -91,7 +91,11 @@ impl Handler for Clock {
                         }
                     }
                 } else if c == ' ' {
-                    self.typed_words.push(String::new());
+                    if let Some(last) = self.typed_words.last() {
+                        if !last.is_empty() {
+                            self.typed_words.push(String::new());
+                        }
+                    }
                 } else if let Some(word) = self.typed_words.last_mut() {
                     word.push(c);
                 } else {
