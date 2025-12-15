@@ -31,10 +31,6 @@ pub fn default_text() -> String {
     "lorem".to_string()
 }
 
-pub fn default_word_count() -> u16 {
-    100
-}
-
 #[cfg(test)]
 mod tests {
     use crate::app::modes::default_clock_duration;
