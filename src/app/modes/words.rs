@@ -133,6 +133,7 @@ impl Handler for Words {
                 .typed_words
                 .last()
                 .is_some_and(|w| w.len() == self.target_words.last().map_or_else(|| 5, |w| w.len()))
+            || self.typed_words.len() > self.target_words.len()
     }
 
     fn handle_complete(&mut self) {
