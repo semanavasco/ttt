@@ -5,9 +5,10 @@ use rand::seq::SliceRandom;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Stylize},
+    symbols,
     text::{Line, Span},
-    widgets::{Paragraph, Widget, Wrap},
+    widgets::{Axis, Chart, Dataset, GraphType, Paragraph, Widget, Wrap},
 };
 
 use crate::{
@@ -27,6 +28,7 @@ pub struct Clock {
     start: Option<Instant>,
     target_words: Vec<String>,
     typed_words: Vec<String>,
+    timestamps: Vec<(usize, Instant)>,
     text: String,
 }
 
@@ -37,6 +39,7 @@ impl Clock {
             start: None,
             target_words: Vec::new(),
             typed_words: Vec::new(),
+            timestamps: Vec::new(),
             text: String::new(),
         }
     }
@@ -96,6 +99,8 @@ impl Handler for Clock {
                 } else if c == ' ' {
                     if let Some(last) = self.typed_words.last() {
                         if !last.is_empty() {
+                            self.timestamps
+                                .push((self.typed_words.len(), Instant::now()));
                             self.typed_words.push(String::new());
                         }
                     }
@@ -213,6 +218,8 @@ impl Renderer for Clock {
     }
 
     fn render_complete(&self, area: Rect, buf: &mut Buffer) {
+        let layout = Layout::vertical([Constraint::Length(6), Constraint::Min(10)]).split(area);
+
         let game_stats = self.get_stats();
 
         let stats = vec![
@@ -223,7 +230,7 @@ impl Renderer for Clock {
                     .add_modifier(Modifier::BOLD),
             ),
             Line::from(""),
-            Line::from(format!("WPM: {:.1}", game_stats.wpm()))
+            Line::from(format!("Average WPM: {:.1}", game_stats.wpm()))
                 .centered()
                 .style(Style::default().fg(Color::Cyan)),
             Line::from(format!("Accuracy: {:.1}%", game_stats.accuracy()))
@@ -235,6 +242,80 @@ impl Renderer for Clock {
         ];
 
         let paragraph = Paragraph::new(stats);
-        paragraph.render(area, buf);
+        paragraph.render(layout[0], buf);
+
+        // Collect data
+        let mut data = vec![(0.0, 0.0)];
+        let mut max_wpm = 0.0;
+
+        if let Some(start) = &self.start {
+            for (words, ts) in &self.timestamps {
+                let duration = ts.duration_since(*start);
+
+                let typed_words: Vec<String> = self
+                    .typed_words
+                    .iter()
+                    .take(*words)
+                    .map(ToOwned::to_owned)
+                    .collect();
+                let target_words: Vec<String> = self
+                    .target_words
+                    .iter()
+                    .take(*words)
+                    .map(ToOwned::to_owned)
+                    .collect();
+
+                let (wpm, _) = calculate_wpm_accuracy(duration, &typed_words, &target_words);
+
+                if wpm > max_wpm {
+                    max_wpm = wpm;
+                }
+
+                data.push((duration.as_secs_f64(), wpm));
+            }
+        }
+
+        // Create the datasets to fill the chart with
+        let datasets = vec![
+            Dataset::default()
+                .name("WPM Over Time")
+                .marker(symbols::Marker::Braille)
+                .graph_type(GraphType::Line)
+                .style(SELECTED_STYLE)
+                .data(&data),
+        ];
+
+        // Create the X axis and define its properties
+        let total_duration = self.duration.as_secs_f64();
+
+        let x_labels = [
+            "0.0",
+            &format!("{:.1}", total_duration / 2.0),
+            &format!("{:.1}", total_duration),
+        ];
+
+        let x_axis = Axis::default()
+            .title("Time".red())
+            .style(Style::default().white())
+            .bounds([0.0, self.duration.as_secs_f64()])
+            .labels(x_labels);
+
+        // Create the Y axis and define its properties
+        let y_labels = [
+            "0.0",
+            &format!("{:.1}", max_wpm / 2.0),
+            &format!("{:.1}", max_wpm),
+        ];
+
+        let y_axis = Axis::default()
+            .title("WPM".red())
+            .style(Style::default().white())
+            .bounds([0.0, max_wpm])
+            .labels(y_labels);
+
+        // Create the chart and link all the parts together
+        let chart = Chart::new(datasets).x_axis(x_axis).y_axis(y_axis);
+
+        chart.render(layout[1], buf);
     }
 }
