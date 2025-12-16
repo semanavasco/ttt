@@ -253,18 +253,8 @@ impl Renderer for Clock {
             for (words, ts) in &self.timestamps {
                 let duration = ts.duration_since(*start);
 
-                let typed_words: Vec<String> = self
-                    .typed_words
-                    .iter()
-                    .take(*words)
-                    .map(ToOwned::to_owned)
-                    .collect();
-                let target_words: Vec<String> = self
-                    .target_words
-                    .iter()
-                    .take(*words)
-                    .map(ToOwned::to_owned)
-                    .collect();
+                let typed_words = &self.typed_words[..*words];
+                let target_words = &self.target_words[..*words];
 
                 let (wpm, _) = calculate_wpm_accuracy(duration, &typed_words, &target_words);
 
