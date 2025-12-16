@@ -151,6 +151,7 @@ impl Handler for Clock {
         self.generate_words();
         self.start = None;
         self.typed_words.clear();
+        self.timestamps.clear();
     }
 }
 
