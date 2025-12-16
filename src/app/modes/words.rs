@@ -5,10 +5,10 @@ use rand::seq::SliceRandom;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Color, Modifier, Style},
     symbols,
     text::Line,
-    widgets::{Axis, Chart, Dataset, GraphType, Paragraph, Widget, Wrap},
+    widgets::{Dataset, GraphType, Paragraph, Widget, Wrap},
 };
 
 use crate::{
@@ -16,7 +16,7 @@ use crate::{
     app::{
         modes::{
             GameStats, Handler, Mode, Renderer,
-            util::{calculate_wpm_accuracy, get_typing_spans},
+            util::{calculate_wpm_accuracy, get_typing_spans, render_wpm_chart},
         },
         ui::SELECTED_STYLE,
     },
@@ -229,7 +229,7 @@ impl Renderer for Words {
         let paragraph = Paragraph::new(stats);
         paragraph.render(layout[0], buf);
 
-        // Collect data
+        // WPM Chart
         let mut data = vec![(0.0, 0.0)];
         let mut max_wpm = 0.0;
 
@@ -240,7 +240,7 @@ impl Renderer for Words {
                 let typed_words = &self.typed_words[..*words];
                 let target_words = &self.target_words[..*words];
 
-                let (wpm, _) = calculate_wpm_accuracy(duration, &typed_words, &target_words);
+                let (wpm, _) = calculate_wpm_accuracy(duration, typed_words, target_words);
 
                 if wpm > max_wpm {
                     max_wpm = wpm;
@@ -250,7 +250,6 @@ impl Renderer for Words {
             }
         }
 
-        // Create the datasets to fill the chart with
         let datasets = vec![
             Dataset::default()
                 .name("WPM Over Time")
@@ -260,35 +259,6 @@ impl Renderer for Words {
                 .data(&data),
         ];
 
-        // Create the X axis and define its properties
-        let x_labels = [
-            "0.0",
-            &format!("{:.1}", game_stats.duration() / 2.0),
-            &format!("{:.1}", game_stats.duration()),
-        ];
-
-        let x_axis = Axis::default()
-            .title("Time".red())
-            .style(Style::default().white())
-            .bounds([0.0, game_stats.duration()])
-            .labels(x_labels);
-
-        // Create the Y axis and define its properties
-        let y_labels = [
-            "0.0",
-            &format!("{:.1}", max_wpm / 2.0),
-            &format!("{:.1}", max_wpm),
-        ];
-
-        let y_axis = Axis::default()
-            .title("WPM".red())
-            .style(Style::default().white())
-            .bounds([0.0, max_wpm])
-            .labels(y_labels);
-
-        // Create the chart and link all the parts together
-        let chart = Chart::new(datasets).x_axis(x_axis).y_axis(y_axis);
-
-        chart.render(layout[1], buf);
+        render_wpm_chart(layout[1], buf, datasets, game_stats.duration(), max_wpm);
     }
 }

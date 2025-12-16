@@ -1,6 +1,12 @@
 use std::time::Duration;
 
-use ratatui::{style::Style, text::Span};
+use ratatui::{
+    buffer::Buffer,
+    layout::Rect,
+    style::{Style, Stylize},
+    text::Span,
+    widgets::{Axis, Chart, Dataset, Widget},
+};
 
 use crate::app::ui::{CORRECT_STYLE, CURSOR_STYLE, INCORRECT_STYLE, PENDING_STYLE, SKIPPED_STYLE};
 
@@ -120,4 +126,43 @@ pub fn calculate_wpm_accuracy(
     let wpm = gross_wpm * (accuracy / 100.0);
 
     (wpm, accuracy)
+}
+
+pub fn render_wpm_chart(
+    area: Rect,
+    buf: &mut Buffer,
+    datasets: Vec<Dataset>,
+    duration: f64,
+    max_wpm: f64,
+) {
+    let y_max = max_wpm.max(10.0);
+
+    let x_labels = [
+        "0.0",
+        &format!("{:.1}", duration / 2.0),
+        &format!("{:.1}", duration),
+    ];
+
+    let x_axis = Axis::default()
+        .title("Time".red())
+        .style(Style::default().white())
+        .bounds([0.0, duration])
+        .labels(x_labels);
+
+    let y_labels = [
+        "0.0",
+        &format!("{:.1}", y_max / 2.0),
+        &format!("{:.1}", y_max),
+    ];
+
+    let y_axis = Axis::default()
+        .title("WPM".red())
+        .style(Style::default().white())
+        .bounds([0.0, y_max])
+        .labels(y_labels);
+
+    Chart::new(datasets)
+        .x_axis(x_axis)
+        .y_axis(y_axis)
+        .render(area, buf);
 }
