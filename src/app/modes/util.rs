@@ -87,23 +87,25 @@ pub fn calculate_wpm_accuracy(
         return (0.0, 0.0);
     }
 
-    let total_chars =
-        typed_words.iter().map(|w| w.len()).sum::<usize>() + typed_words.len().saturating_sub(1);
-
-    let gross_wpm = (total_chars as f64 / 5.0) / duration_mins;
-
+    let mut total_chars = 0;
     let mut correct_chars = 0;
+
     for (i, typed) in typed_words.iter().enumerate() {
         if let Some(target) = target_words.get(i) {
-            correct_chars += typed
-                .chars()
-                .zip(target.chars())
-                .filter(|(t, r)| t == r)
-                .count();
+            total_chars += typed.len();
 
-            // +1 for space
-            if typed == target {
-                correct_chars += 1;
+            let min_len = typed.len().min(target.len());
+            for j in 0..min_len {
+                if typed.chars().nth(j) == target.chars().nth(j) {
+                    correct_chars += 1;
+                }
+            }
+
+            if i < typed_words.len() - 1 {
+                total_chars += 1;
+                if typed == target {
+                    correct_chars += 1;
+                }
             }
         }
     }
@@ -114,6 +116,7 @@ pub fn calculate_wpm_accuracy(
         0.0
     };
 
+    let gross_wpm = (total_chars as f64 / 5.0) / duration_mins;
     let wpm = gross_wpm * (accuracy / 100.0);
 
     (wpm, accuracy)
