@@ -30,7 +30,7 @@ pub struct Words {
     target_words: Vec<String>,
     typed_words: Vec<String>,
     timestamps: Vec<(usize, Instant)>,
-    text: String,
+    dictionary: Vec<String>,
 }
 
 impl Words {
@@ -42,30 +42,21 @@ impl Words {
             target_words: Vec::new(),
             typed_words: Vec::new(),
             timestamps: Vec::new(),
-            text: String::new(),
+            dictionary: Vec::new(),
         }
     }
 
     fn generate_words(&mut self) {
-        let bytes = Resource::get_text(&self.text)
-            .unwrap_or_else(|_| panic!("Couldn't find \"{}\" text", &self.text));
+        let mut rng = rand::rng();
+        self.dictionary.shuffle(&mut rng);
 
-        let text: Vec<&str> = str::from_utf8(&bytes)
-            .expect("Text contains non-utf8 characters")
-            .lines()
-            .collect();
-
-        let mut words: Vec<String> = text
+        self.target_words = self
+            .dictionary
             .iter()
             .cycle()
             .take(self.words)
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .collect();
-
-        let mut rng = rand::rng();
-        words.shuffle(&mut rng);
-
-        self.target_words = words;
     }
 }
 
@@ -74,10 +65,20 @@ impl Handler for Words {
         self.start = None;
         self.end = None;
         self.typed_words.clear();
-        self.text = config.defaults.text.clone();
+
+        let bytes = Resource::get_text(&config.defaults.text)
+            .unwrap_or_else(|_| panic!("Couldn't find \"{}\" text", &config.defaults.text));
+
+        self.dictionary = str::from_utf8(&bytes)
+            .expect("Text contains non-utf8 characters")
+            .lines()
+            .map(ToString::to_string)
+            .collect();
+
         if let Mode::Words { count } = &config.defaults.mode {
             self.words = *count;
         }
+
         self.generate_words();
     }
 
