@@ -89,22 +89,16 @@ impl Args {
             }
         }
 
-        if let Some(new_duration) = self.duration {
-            match &mut config.defaults.mode {
-                Mode::Clock { duration } => {
-                    *duration = Duration::from_secs(new_duration);
-                }
-                _ => {}
-            }
+        if let Some(new_duration) = self.duration
+            && let Mode::Clock { duration } = &mut config.defaults.mode
+        {
+            *duration = Duration::from_secs(new_duration);
         }
 
-        if let Some(word_count) = self.words {
-            match &mut config.defaults.mode {
-                Mode::Words { count } => {
-                    *count = word_count;
-                }
-                _ => {}
-            }
+        if let Some(word_count) = self.words
+            && let Mode::Words { count } = &mut config.defaults.mode
+        {
+            *count = word_count;
         }
     }
 }

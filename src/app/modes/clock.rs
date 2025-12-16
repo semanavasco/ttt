@@ -97,12 +97,12 @@ impl Handler for Clock {
                         }
                     }
                 } else if c == ' ' {
-                    if let Some(last) = self.typed_words.last() {
-                        if !last.is_empty() {
-                            self.timestamps
-                                .push((self.typed_words.len(), Instant::now()));
-                            self.typed_words.push(String::new());
-                        }
+                    if let Some(last) = self.typed_words.last()
+                        && !last.is_empty()
+                    {
+                        self.timestamps
+                            .push((self.typed_words.len(), Instant::now()));
+                        self.typed_words.push(String::new());
                     }
                 } else if let Some(word) = self.typed_words.last_mut() {
                     word.push(c);

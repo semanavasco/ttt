@@ -16,7 +16,7 @@ impl Resource {
         let project_dir = ProjectDirs::from("com", "semanavasco", "ttt").ok_or_else(|| {
             Error::new(
                 std::io::ErrorKind::NotFound,
-                format!("Could not determine config dir"),
+                "Could not determine config dir".to_string(),
             )
         })?;
 
