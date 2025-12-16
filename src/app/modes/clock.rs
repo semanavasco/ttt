@@ -13,7 +13,10 @@ use ratatui::{
 use crate::{
     Resource,
     app::{
-        modes::{GameStats, Handler, Mode, Renderer, util::get_typing_spans},
+        modes::{
+            GameStats, Handler, Mode, Renderer,
+            util::{calculate_wpm_accuracy, get_typing_spans},
+        },
         ui::SELECTED_STYLE,
     },
     config::Config,
@@ -129,44 +132,8 @@ impl Handler for Clock {
     }
 
     fn get_stats(&self) -> GameStats {
-        let duration_mins = self.duration.as_secs_f64() / 60.0;
-
-        if self.typed_words.is_empty() || duration_mins == 0.0 {
-            return GameStats {
-                wpm: 0.0,
-                accuracy: 0.0,
-                duration: self.duration.as_secs_f64(),
-            };
-        }
-
-        let total_chars = self.typed_words.iter().map(|w| w.len()).sum::<usize>()
-            + self.typed_words.len().saturating_sub(1);
-
-        let gross_wpm = (total_chars as f64 / 5.0) / duration_mins;
-
-        let mut correct_chars = 0;
-        for (i, typed) in self.typed_words.iter().enumerate() {
-            if let Some(target) = self.target_words.get(i) {
-                correct_chars += typed
-                    .chars()
-                    .zip(target.chars())
-                    .filter(|(t, r)| t == r)
-                    .count();
-
-                // +1 for space
-                if typed == target {
-                    correct_chars += 1;
-                }
-            }
-        }
-
-        let accuracy = if total_chars > 0 {
-            (correct_chars as f64 / total_chars as f64) * 100.0
-        } else {
-            0.0
-        };
-
-        let wpm = gross_wpm * (accuracy / 100.0);
+        let (wpm, accuracy) =
+            calculate_wpm_accuracy(self.duration, &self.typed_words, &self.target_words);
 
         GameStats {
             wpm,

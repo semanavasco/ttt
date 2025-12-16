@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use ratatui::{style::Style, text::Span};
 
 use crate::app::ui::{CORRECT_STYLE, CURSOR_STYLE, INCORRECT_STYLE, PENDING_STYLE, SKIPPED_STYLE};
@@ -72,4 +74,47 @@ pub fn get_typing_spans<'a>(
     }
 
     spans
+}
+
+pub fn calculate_wpm_accuracy(
+    duration: Duration,
+    typed_words: &[String],
+    target_words: &[String],
+) -> (f64, f64) {
+    let duration_mins = duration.as_secs_f64() / 60.0;
+
+    if typed_words.is_empty() || duration_mins == 0.0 {
+        return (0.0, 0.0);
+    }
+
+    let total_chars =
+        typed_words.iter().map(|w| w.len()).sum::<usize>() + typed_words.len().saturating_sub(1);
+
+    let gross_wpm = (total_chars as f64 / 5.0) / duration_mins;
+
+    let mut correct_chars = 0;
+    for (i, typed) in typed_words.iter().enumerate() {
+        if let Some(target) = target_words.get(i) {
+            correct_chars += typed
+                .chars()
+                .zip(target.chars())
+                .filter(|(t, r)| t == r)
+                .count();
+
+            // +1 for space
+            if typed == target {
+                correct_chars += 1;
+            }
+        }
+    }
+
+    let accuracy = if total_chars > 0 {
+        (correct_chars as f64 / total_chars as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    let wpm = gross_wpm * (accuracy / 100.0);
+
+    (wpm, accuracy)
 }
