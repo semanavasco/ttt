@@ -2,6 +2,8 @@
 
 A simple Terminal Typing Test utility written in Rust using ratatui, inspired by [Monkeytype](https://monkeytype.com/).
 
+![TTT Preview](./ttt.gif)
+
 ## Installation
 
 ```bash
