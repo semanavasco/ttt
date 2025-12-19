@@ -15,7 +15,7 @@ use crate::{
     Resource,
     app::{
         modes::{
-            GameStats, Handler, Mode, Renderer,
+            GameStats, Handler, Mode, ModeAction, Renderer,
             util::{calculate_wpm_accuracy, get_typing_spans, render_wpm_chart},
         },
         ui::SELECTED_STYLE,
@@ -82,7 +82,7 @@ impl Handler for Words {
         self.generate_words();
     }
 
-    fn handle_input(&mut self, key: KeyEvent) {
+    fn handle_input(&mut self, key: KeyEvent) -> ModeAction {
         match key.code {
             KeyCode::Char(c) => {
                 if self.start.is_none() {
@@ -126,6 +126,7 @@ impl Handler for Words {
             }
             _ => {}
         }
+        ModeAction::None
     }
 
     fn is_complete(&self) -> bool {

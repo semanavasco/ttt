@@ -44,7 +44,7 @@ fn main() -> io::Result<()> {
     );
 
     let mut state = State::from_config(&config);
-    let result = app::run(&mut terminal, &mut state);
+    let result = app::run(&mut terminal, &mut state, &config);
 
     let _ = execute!(stdout(), PopKeyboardEnhancementFlags);
     ratatui::restore();

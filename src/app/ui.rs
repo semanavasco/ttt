@@ -55,6 +55,10 @@ pub fn draw(frame: &mut Frame, state: &State) {
             vec![
                 Span::from(" Quit "),
                 Span::from("(ESC)").style(SELECTED_STYLE),
+                Span::from(" | Navigate Options "),
+                Span::from("(<- | ->)").style(SELECTED_STYLE),
+                Span::from(" | Select "),
+                Span::from("(ENTER)").style(SELECTED_STYLE),
                 Span::from(" | Press any key to start your typing session... "),
             ]
         }

@@ -5,7 +5,7 @@ use rand::seq::SliceRandom;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Stylize},
     symbols,
     text::{Line, Span},
     widgets::{Dataset, GraphType, Paragraph, Widget, Wrap},
@@ -15,7 +15,7 @@ use crate::{
     Resource,
     app::{
         modes::{
-            GameStats, Handler, Mode, Renderer,
+            AVAILABLE_MODES, GameStats, Handler, Mode, ModeAction, Renderer,
             util::{calculate_wpm_accuracy, get_typing_spans, render_wpm_chart},
         },
         ui::SELECTED_STYLE,
@@ -23,8 +23,24 @@ use crate::{
     config::Config,
 };
 
+const DURATIONS: [u64; 4] = [15, 30, 60, 120];
+
+enum Options {
+    Mode(String),
+    Durations(u64),
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Options::Mode("clock".to_string())
+    }
+}
+
 pub struct Clock {
+    selected_option: Options,
     duration: Duration,
+    custom_duration: u64,
+    is_editing: Option<Options>,
     start: Option<Instant>,
     target_words: Vec<String>,
     typed_words: Vec<String>,
@@ -34,8 +50,18 @@ pub struct Clock {
 
 impl Clock {
     pub fn new(duration: Duration) -> Self {
+        let duration_secs = duration.as_secs();
+        let custom_duration = if DURATIONS.contains(&duration_secs) {
+            30
+        } else {
+            duration_secs
+        };
+
         Self {
+            selected_option: Options::default(),
             duration,
+            custom_duration,
+            is_editing: None,
             start: None,
             target_words: Vec::new(),
             typed_words: Vec::new(),
@@ -74,12 +100,111 @@ impl Handler for Clock {
         self.start = None;
         if let Mode::Clock { duration } = &config.defaults.mode {
             self.duration = *duration;
+            let secs = duration.as_secs();
+            if !DURATIONS.contains(&secs) {
+                self.custom_duration = secs;
+            }
         }
         self.generate_words();
     }
 
-    fn handle_input(&mut self, key: KeyEvent) {
+    fn handle_input(&mut self, key: KeyEvent) -> ModeAction {
+        if let Some(editing) = &mut self.is_editing {
+            match editing {
+                Options::Mode(mode) => match key.code {
+                    KeyCode::Left | KeyCode::Down => {
+                        let current_idx = AVAILABLE_MODES
+                            .iter()
+                            .position(|&m| m == mode.as_str())
+                            .unwrap_or(0);
+                        let prev_idx = current_idx
+                            .checked_sub(1)
+                            .unwrap_or(AVAILABLE_MODES.len() - 1);
+
+                        *mode = AVAILABLE_MODES[prev_idx].to_string();
+                    }
+                    KeyCode::Right | KeyCode::Up => {
+                        let current_idx = AVAILABLE_MODES
+                            .iter()
+                            .position(|&m| m == mode.as_str())
+                            .unwrap_or(0);
+                        let next_idx = (current_idx + 1) % AVAILABLE_MODES.len();
+
+                        *mode = AVAILABLE_MODES[next_idx].to_string();
+                    }
+                    KeyCode::Enter => {
+                        let new_mode = mode.clone();
+                        self.is_editing = None;
+                        if new_mode != "clock" {
+                            return ModeAction::SwitchMode(new_mode);
+                        }
+                    }
+                    _ => {}
+                },
+                Options::Durations(_) => match key.code {
+                    KeyCode::Left | KeyCode::Down => {
+                        self.custom_duration = self.custom_duration.saturating_sub(5).max(5);
+                        self.duration = Duration::from_secs(self.custom_duration);
+                    }
+                    KeyCode::Right | KeyCode::Up => {
+                        self.custom_duration += 5;
+                        self.duration = Duration::from_secs(self.custom_duration);
+                    }
+                    KeyCode::Enter => {
+                        self.is_editing = None;
+                    }
+                    _ => {}
+                },
+            }
+            return ModeAction::None;
+        }
+
         match key.code {
+            KeyCode::Left => match self.selected_option {
+                Options::Mode(_) => self.selected_option = Options::Durations(1000),
+                Options::Durations(duration) => {
+                    self.selected_option = if duration == DURATIONS[0] {
+                        Options::default()
+                    } else if duration == DURATIONS[1] {
+                        Options::Durations(DURATIONS[0])
+                    } else if duration == DURATIONS[2] {
+                        Options::Durations(DURATIONS[1])
+                    } else if duration == DURATIONS[3] {
+                        Options::Durations(DURATIONS[2])
+                    } else {
+                        Options::Durations(DURATIONS[3])
+                    }
+                }
+            },
+            KeyCode::Right => match self.selected_option {
+                Options::Mode(_) => self.selected_option = Options::Durations(DURATIONS[0]),
+                Options::Durations(duration) => {
+                    self.selected_option = if duration == DURATIONS[0] {
+                        Options::Durations(DURATIONS[1])
+                    } else if duration == DURATIONS[1] {
+                        Options::Durations(DURATIONS[2])
+                    } else if duration == DURATIONS[2] {
+                        Options::Durations(DURATIONS[3])
+                    } else if duration == DURATIONS[3] {
+                        Options::Durations(1000)
+                    } else {
+                        Options::default()
+                    }
+                }
+            },
+            KeyCode::Enter => match self.selected_option {
+                Options::Durations(duration) => {
+                    if DURATIONS.contains(&duration) {
+                        self.duration = Duration::from_secs(duration);
+                    } else {
+                        self.is_editing = Some(Options::Durations(1000));
+                        self.duration = Duration::from_secs(self.custom_duration);
+                    }
+                }
+                Options::Mode(_) => {
+                    self.is_editing = Some(Options::default());
+                }
+            },
             KeyCode::Char(c) => {
                 if self.start.is_none() {
                     self.start = Some(Instant::now());
@@ -122,6 +247,7 @@ impl Handler for Clock {
             }
             _ => {}
         }
+        ModeAction::None
     }
 
     fn is_complete(&self) -> bool {
@@ -164,26 +290,81 @@ impl Renderer for Clock {
         ])
         .split(area);
 
-        let durations = [15, 30, 60, 120];
         let current_duration = self.duration.as_secs();
 
-        let mut config_spans = vec![Span::from("Clock").style(SELECTED_STYLE), Span::from(" | ")];
+        let mut config_spans = vec![];
 
-        config_spans.extend(durations.iter().flat_map(|&d| {
-            let style = if current_duration == d {
+        let (mode_text, style) = if let Some(Options::Mode(ref m)) = self.is_editing {
+            (m.as_str(), SELECTED_STYLE.fg(Color::Yellow).underlined())
+        } else {
+            let mut style = SELECTED_STYLE;
+            if let Options::Mode(_) = self.selected_option {
+                style = style.underlined();
+            }
+            ("clock", style)
+        };
+
+        config_spans.push(Span::styled(
+            format!("{}{}", mode_text[0..1].to_uppercase(), &mode_text[1..]),
+            style,
+        ));
+        config_spans.push(Span::from(" | "));
+
+        config_spans.extend(DURATIONS.iter().flat_map(|&d| {
+            let mut style = if current_duration == d {
                 SELECTED_STYLE
             } else {
                 Style::default()
             };
 
+            if let Options::Durations(duration) = self.selected_option {
+                if d == duration {
+                    style = style.underlined();
+                }
+            }
+
             [Span::styled(format!("{}s", d), style), Span::from(" | ")]
         }));
 
-        config_spans.push(if !durations.contains(&current_duration) {
-            Span::from(format!(" 󱁤  {}", current_duration)).style(SELECTED_STYLE)
+        let custom_selected = if let Options::Durations(d) = self.selected_option {
+            !DURATIONS.contains(&d)
         } else {
-            Span::from(" 󱁤 ")
-        });
+            false
+        };
+
+        config_spans.push(
+            if !DURATIONS.contains(&current_duration)
+                || custom_selected
+                || self.is_editing.as_ref().is_some_and(|x| match x {
+                    Options::Durations(_) => true,
+                    _ => false,
+                })
+            {
+                let val = if !DURATIONS.contains(&current_duration) {
+                    current_duration
+                } else {
+                    self.custom_duration
+                };
+
+                let mut style = if !DURATIONS.contains(&current_duration) {
+                    SELECTED_STYLE
+                } else {
+                    Style::default()
+                };
+
+                if custom_selected {
+                    style = style.underlined();
+                }
+
+                if let Some(Options::Durations(_)) = self.is_editing {
+                    style = style.fg(Color::Yellow);
+                }
+
+                Span::from(format!(" 󱁤  {}", val)).style(style)
+            } else {
+                Span::from(" 󱁤 ").style(Style::default())
+            },
+        );
 
         let config = Paragraph::new(Line::from(config_spans)).centered();
         config.render(layout[0], buf);

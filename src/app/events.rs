@@ -2,9 +2,15 @@ use std::{io, time::Duration};
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind, poll};
 
-use crate::app::state::{Menu, State};
+use crate::{
+    app::{
+        modes::{Mode, ModeAction, create_mode},
+        state::{Menu, State},
+    },
+    config::Config,
+};
 
-pub fn handle_events(state: &mut State) -> io::Result<()> {
+pub fn handle_events(state: &mut State, config: &Config) -> io::Result<()> {
     if !poll(Duration::from_millis(100))? {
         return Ok(());
     }
@@ -17,10 +23,17 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
         match state.menu {
             Menu::Home => match key.code {
                 KeyCode::Esc => state.exit = true,
-                _ => {
+                KeyCode::Char(_) => {
                     state.menu = Menu::Running;
-                    state.mode.handle_input(key);
+                    match state.mode.handle_input(key) {
+                        ModeAction::SwitchMode(mode_str) => switch_mode(state, &mode_str, config),
+                        ModeAction::None => {}
+                    }
                 }
+                _ => match state.mode.handle_input(key) {
+                    ModeAction::SwitchMode(mode_str) => switch_mode(state, &mode_str, config),
+                    ModeAction::None => {}
+                },
             },
             Menu::Running => match key.code {
                 KeyCode::Esc => state.exit = true,
@@ -28,7 +41,9 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
                     state.mode.reset();
                     state.menu = Menu::Home;
                 }
-                _ => state.mode.handle_input(key),
+                _ => {
+                    state.mode.handle_input(key);
+                }
             },
             Menu::Completed => match key.code {
                 KeyCode::Esc => state.exit = true,
@@ -42,6 +57,13 @@ pub fn handle_events(state: &mut State) -> io::Result<()> {
     }
 
     Ok(())
+}
+
+fn switch_mode(state: &mut State, mode_str: &str, config: &Config) {
+    if let Some(mode_enum) = Mode::from_string(mode_str) {
+        state.mode = create_mode(&mode_enum);
+        state.mode.initialize(config);
+    }
 }
 
 pub fn handle_is_done(state: &mut State) {
