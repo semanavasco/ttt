@@ -1,3 +1,8 @@
+//! # Command Line Interface Module
+//!
+//! This module defines the command-line arguments for the application
+//! and provides logic for loading and merging configuration from various sources.
+
 use std::{path::PathBuf, time::Duration};
 
 use clap::{Parser, builder::PossibleValuesParser};
@@ -41,6 +46,11 @@ pub struct Args {
 }
 
 impl Args {
+    /// Resolves the final application configuration.
+    ///
+    /// It loads configuration from a provided path, the default user config
+    /// directory, or falls back to system defaults. CLI arguments are then
+    /// applied as overrides.
     pub fn get_config(&self) -> Config {
         let mut config: Config = match &self.config {
             Some(path) => {
@@ -63,19 +73,23 @@ impl Args {
         config
     }
 
+    /// Returns true if the user requested to save the current configuration.
     pub fn should_save(&self) -> bool {
         self.save_config
     }
 
+    /// Returns true if the user requested to ignore config files and use defaults.
     pub fn use_defaults(&self) -> bool {
         self.defaults
     }
 
+    /// Returns the platform-specific configuration directory for TTT.
     pub fn config_dir(&self) -> Option<PathBuf> {
         let project_dir = ProjectDirs::from("com", "semanavasco", "ttt")?;
         Some(project_dir.config_dir().to_path_buf())
     }
 
+    /// Merges CLI overrides into the provided configuration.
     fn apply_config_overrides(&self, config: &mut Config) {
         if let Some(text) = &self.text {
             config.defaults.text = text.to_string();

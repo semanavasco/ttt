@@ -86,7 +86,7 @@ Custom texts can be placed at: `~/.config/ttt/texts/`
 1. Create `src/app/modes/newmode.rs` and implement `Handler` + `Renderer` traits:
 
 ```rust
-use crate::app::modes: :{GameStats, Handler, Renderer};
+use crate::app::{State, modes::{Action, Handler, Renderer}};
 use crate::config::Config;
 use crossterm::event::KeyEvent;
 use ratatui::{buffer::Buffer, layout::Rect};
@@ -97,17 +97,22 @@ pub struct NewMode {
 
 impl Handler for NewMode {
     fn initialize(&mut self, config: &Config) { /* ... */ }
-    fn handle_input(&mut self, key: KeyEvent) { /* ... */ }
-    fn is_complete(&self) -> bool { /* ... */ }
-    fn handle_complete(&mut self) { /* ... */ }
-    fn get_stats(&self) -> GameStats { /* ... */ }
-    fn reset(&mut self) { /* ... */ }
+
+    fn handle_input(&mut self, key: KeyEvent) -> Action {
+        // Process input and return an Action to trigger state changes
+        // e.g., Action::SwitchState(State::Running)
+        Action::None
+    }
 }
 
 impl Renderer for NewMode {
-    fn render_home(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
-    fn render_running(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
-    fn render_complete(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
+    fn render_home_body(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
+    fn render_running_body(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
+    fn render_complete_body(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
+
+    // Footer methods have default implementations in Renderer trait,
+    // but you can override them:
+    // fn render_home_footer(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
 }
 ```
 
@@ -116,31 +121,33 @@ impl Renderer for NewMode {
 ```rust
 pub mod newmode;
 
-pub const AVAILABLE_MODES: &[&str] = &["clock", /* ... */ "newmode"];
+// ...
 
-#[derive(Serialize, Deserialize, Clone)]
-pub enum Mode {
-    Clock { duration: Duration },
-    /* ... */
-    NewMode { /* your config */ },
-}
-
-impl Mode {
-    pub fn from_string(mode:  &str) -> Option<Self> {
-        match mode {
-            "clock" => Some(Mode::Clock { duration: default_clock_duration() }),
-            /* ... */
-            "newmode" => Some(Mode::NewMode { /* ...  */ }),
-            _ => None,
-        }
-    }
-}
+pub const AVAILABLE_MODES: &[&str] = &["clock", "words", "newmode"];
 
 pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
     match mode {
         Mode::Clock { duration } => Box::new(Clock::new(*duration)),
-        /* ... */
+        Mode::Words { count } => Box::new(Words::new(*count)),
         Mode::NewMode { /* ... */ } => Box::new(NewMode::new(/* ... */)),
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub enum Mode {
+    Clock { /* ... */ },
+    Words { /* ... */ },
+    NewMode { /* your config */ },
+}
+
+impl Mode {
+    pub fn from_string(mode: &str) -> Option<Self> {
+        match mode {
+            "clock" => Some(Mode::Clock { /* ... */ }),
+            "words" => Some(Mode::Words { /* ... */ }),
+            "newmode" => Some(Mode::NewMode { /* ... */ }),
+            _ => None,
+        }
     }
 }
 ```

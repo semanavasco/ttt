@@ -1,13 +1,20 @@
+//! # Configuration Module
+//!
+//! This module defines the application's configuration schema, handling
+//! serialization and deserialization of user preferences.
+
 use serde::{Deserialize, Serialize};
 
 use crate::app::modes::Mode;
 
+/// The root configuration object.
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub defaults: Defaults,
 }
 
+/// Default settings for typing tests.
 #[derive(Serialize, Deserialize)]
 pub struct Defaults {
     #[serde(default = "default_text")]

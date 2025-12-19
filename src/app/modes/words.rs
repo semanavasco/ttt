@@ -14,9 +14,10 @@ use ratatui::{
 use crate::{
     Resource,
     app::{
+        State,
         modes::{
-            AVAILABLE_MODES, GameStats, Handler, Mode, ModeAction, Renderer,
-            util::{calculate_wpm_accuracy, get_typing_spans, render_wpm_chart},
+            AVAILABLE_MODES, Action, GameStats, Handler, Mode, Renderer,
+            util::{get_typing_spans, render_wpm_chart},
         },
         ui::SELECTED_STYLE,
     },
@@ -83,6 +84,35 @@ impl Words {
             .map(ToString::to_string)
             .collect();
     }
+
+    fn get_stats(&self) -> GameStats {
+        let duration = if let Some(start) = self.start
+            && let Some(end) = self.end
+        {
+            end.duration_since(start)
+        } else {
+            Duration::from_secs(0)
+        };
+
+        GameStats::calculate(duration, &self.typed_words, &self.target_words)
+    }
+
+    fn reset(&mut self) {
+        self.generate_words();
+        self.start = None;
+        self.end = None;
+        self.typed_words.clear();
+        self.timestamps.clear();
+    }
+
+    fn is_complete(&self) -> bool {
+        self.typed_words.len() == self.target_words.len()
+            && self
+                .typed_words
+                .last()
+                .is_some_and(|w| w.len() == self.target_words.last().map_or_else(|| 5, |w| w.len()))
+            || self.typed_words.len() > self.target_words.len()
+    }
 }
 
 impl Handler for Words {
@@ -110,7 +140,23 @@ impl Handler for Words {
         self.generate_words();
     }
 
-    fn handle_input(&mut self, key: KeyEvent) -> ModeAction {
+    fn handle_input(&mut self, key: KeyEvent) -> Action {
+        if key.code == KeyCode::Tab {
+            self.reset();
+            return Action::SwitchState(State::Home);
+        }
+
+        if key.code == KeyCode::Esc {
+            return Action::Quit;
+        }
+
+        if self.is_complete() {
+            if self.end.is_none() {
+                self.end = Some(Instant::now());
+            }
+            return Action::SwitchState(State::Complete);
+        }
+
         if let Some(editing) = &mut self.is_editing {
             match editing {
                 Options::Mode(mode) => match key.code {
@@ -132,18 +178,11 @@ impl Handler for Words {
                         let next_idx = (current_idx + 1) % AVAILABLE_MODES.len();
                         *mode = AVAILABLE_MODES[next_idx].to_string();
                     }
-                    KeyCode::Enter => {
+                    KeyCode::Enter | KeyCode::Char(' ') => {
                         let new_mode = mode.clone();
                         self.is_editing = None;
                         if new_mode != "words" {
-                            return ModeAction::SwitchMode(new_mode);
-                        }
-                    }
-                    KeyCode::Char(c) if c == ' ' => {
-                        let new_mode = mode.clone();
-                        self.is_editing = None;
-                        if new_mode != "words" {
-                            return ModeAction::SwitchMode(new_mode);
+                            return Action::SwitchMode(new_mode);
                         }
                     }
                     _ => {}
@@ -159,16 +198,11 @@ impl Handler for Words {
                         self.words = self.custom_words;
                         self.reset();
                     }
-                    KeyCode::Enter => {
-                        self.is_editing = None;
-                    }
-                    KeyCode::Char(c) if c == ' ' => {
-                        self.is_editing = None;
-                    }
+                    KeyCode::Enter | KeyCode::Char(' ') => self.is_editing = None,
                     _ => {}
                 },
             }
-            return ModeAction::None;
+            return Action::None;
         }
 
         match key.code {
@@ -215,31 +249,26 @@ impl Handler for Words {
                         self.reset();
                     }
                 }
-                Options::Mode(_) => {
-                    self.is_editing = Some(Options::Mode("words".to_string()));
-                }
+                Options::Mode(_) => self.is_editing = Some(Options::default()),
             },
             KeyCode::Char(c) => {
-                if c == ' ' && self.start.is_none() {
-                    match self.selected_option {
-                        Options::WordCount(count) => {
-                            if WORD_COUNTS.contains(&count) {
-                                self.words = count;
-                                self.reset();
-                            } else {
-                                self.is_editing = Some(Options::WordCount(1000));
-                                self.words = self.custom_words;
-                                self.reset();
-                            }
-                        }
-                        Options::Mode(_) => {
-                            self.is_editing = Some(Options::Mode("words".to_string()));
-                        }
-                    }
-                    return ModeAction::None;
-                }
-
                 if self.start.is_none() {
+                    if c == ' ' {
+                        match self.selected_option {
+                            Options::WordCount(count) => {
+                                if WORD_COUNTS.contains(&count) {
+                                    self.words = count;
+                                    self.reset();
+                                } else {
+                                    self.is_editing = Some(Options::WordCount(1000));
+                                    self.words = self.custom_words;
+                                    self.reset();
+                                }
+                            }
+                            Options::Mode(_) => self.is_editing = Some(Options::default()),
+                        }
+                        return Action::None;
+                    }
                     self.start = Some(Instant::now());
                 }
 
@@ -268,6 +297,12 @@ impl Handler for Words {
                 } else {
                     self.typed_words.push(c.to_string());
                 }
+
+                if let Some(start) = self.start
+                    && start.elapsed() < Duration::from_millis(100)
+                {
+                    return Action::SwitchState(State::Running);
+                }
             }
             KeyCode::Backspace => {
                 if let Some((typed_idx, typed_word)) =
@@ -281,52 +316,18 @@ impl Handler for Words {
             }
             _ => {}
         }
-        ModeAction::None
-    }
 
-    fn is_complete(&self) -> bool {
-        self.typed_words.len() == self.target_words.len()
-            && self
-                .typed_words
-                .last()
-                .is_some_and(|w| w.len() == self.target_words.last().map_or_else(|| 5, |w| w.len()))
-            || self.typed_words.len() > self.target_words.len()
-    }
-
-    fn handle_complete(&mut self) {
-        self.end = Some(Instant::now());
-    }
-
-    fn get_stats(&self) -> GameStats {
-        let duration = if let Some(start) = self.start
-            && let Some(end) = self.end
-        {
-            end.duration_since(start)
-        } else {
-            Duration::from_secs(0)
-        };
-
-        let (wpm, accuracy) =
-            calculate_wpm_accuracy(duration, &self.typed_words, &self.target_words);
-
-        GameStats {
-            wpm,
-            accuracy,
-            duration: duration.as_secs_f64(),
+        if self.is_complete() {
+            self.end = Some(Instant::now());
+            return Action::SwitchState(State::Complete);
         }
-    }
 
-    fn reset(&mut self) {
-        self.generate_words();
-        self.start = None;
-        self.end = None;
-        self.typed_words.clear();
-        self.timestamps.clear();
+        Action::None
     }
 }
 
 impl Renderer for Words {
-    fn render_home(&self, area: Rect, buf: &mut Buffer) {
+    fn render_home_body(&self, area: Rect, buf: &mut Buffer) {
         let layout = Layout::vertical([
             Constraint::Length(3),
             Constraint::Length(1),
@@ -420,7 +421,7 @@ impl Renderer for Words {
         preview.render(layout[2], buf);
     }
 
-    fn render_running(&self, area: Rect, buf: &mut Buffer) {
+    fn render_running_body(&self, area: Rect, buf: &mut Buffer) {
         let layout = Layout::vertical([
             Constraint::Length(3),
             Constraint::Length(1),
@@ -428,18 +429,16 @@ impl Renderer for Words {
         ])
         .split(area);
 
-        // Render word count
         let counter = Paragraph::new(format!("{}/{}", self.typed_words.len(), self.words))
             .style(SELECTED_STYLE);
         counter.render(layout[1], buf);
 
-        // Render typing area
         let typing_spans = get_typing_spans(&self.target_words, &self.typed_words);
         let typing_paragraph = Paragraph::new(Line::from(typing_spans)).wrap(Wrap { trim: false });
         typing_paragraph.render(layout[2], buf);
     }
 
-    fn render_complete(&self, area: Rect, buf: &mut Buffer) {
+    fn render_complete_body(&self, area: Rect, buf: &mut Buffer) {
         let layout = Layout::vertical([Constraint::Length(6), Constraint::Min(10)]).split(area);
 
         let game_stats = self.get_stats();
@@ -466,7 +465,6 @@ impl Renderer for Words {
         let paragraph = Paragraph::new(stats);
         paragraph.render(layout[0], buf);
 
-        // WPM Chart
         let mut data = vec![(0.0, 0.0)];
         let mut max_wpm = 0.0;
 
@@ -477,7 +475,8 @@ impl Renderer for Words {
                 let typed_words = &self.typed_words[..*words];
                 let target_words = &self.target_words[..*words];
 
-                let (wpm, _) = calculate_wpm_accuracy(duration, typed_words, target_words);
+                let stats = GameStats::calculate(duration, typed_words, target_words);
+                let wpm = stats.wpm();
 
                 if wpm > max_wpm {
                     max_wpm = wpm;
