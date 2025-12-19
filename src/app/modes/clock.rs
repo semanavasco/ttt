@@ -139,6 +139,13 @@ impl Handler for Clock {
                             return ModeAction::SwitchMode(new_mode);
                         }
                     }
+                    KeyCode::Char(c) if c == ' ' => {
+                        let new_mode = mode.clone();
+                        self.is_editing = None;
+                        if new_mode != "clock" {
+                            return ModeAction::SwitchMode(new_mode);
+                        }
+                    }
                     _ => {}
                 },
                 Options::Durations(_) => match key.code {
@@ -151,6 +158,9 @@ impl Handler for Clock {
                         self.duration = Duration::from_secs(self.custom_duration);
                     }
                     KeyCode::Enter => {
+                        self.is_editing = None;
+                    }
+                    KeyCode::Char(c) if c == ' ' => {
                         self.is_editing = None;
                     }
                     _ => {}
@@ -206,9 +216,27 @@ impl Handler for Clock {
                 }
             },
             KeyCode::Char(c) => {
+                if c == ' ' && self.start.is_none() {
+                    match self.selected_option {
+                        Options::Durations(duration) => {
+                            if DURATIONS.contains(&duration) {
+                                self.duration = Duration::from_secs(duration);
+                            } else {
+                                self.is_editing = Some(Options::Durations(1000));
+                                self.duration = Duration::from_secs(self.custom_duration);
+                            }
+                        }
+                        Options::Mode(_) => {
+                            self.is_editing = Some(Options::default());
+                        }
+                    }
+                    return ModeAction::None;
+                }
+
                 if self.start.is_none() {
                     self.start = Some(Instant::now());
                 }
+
                 if c == 'h' && key.modifiers.contains(KeyModifiers::CONTROL) {
                     if let Some((typed_idx, typed_word)) =
                         self.typed_words.iter_mut().enumerate().last()

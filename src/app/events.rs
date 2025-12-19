@@ -23,7 +23,7 @@ pub fn handle_events(state: &mut State, config: &Config) -> io::Result<()> {
         match state.menu {
             Menu::Home => match key.code {
                 KeyCode::Esc => state.exit = true,
-                KeyCode::Char(_) => {
+                KeyCode::Char(c) if c != ' ' => {
                     state.menu = Menu::Running;
                     match state.mode.handle_input(key) {
                         ModeAction::SwitchMode(mode_str) => switch_mode(state, &mode_str, config),

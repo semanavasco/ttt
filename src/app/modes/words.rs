@@ -139,8 +139,12 @@ impl Handler for Words {
                             return ModeAction::SwitchMode(new_mode);
                         }
                     }
-                    KeyCode::Esc => {
+                    KeyCode::Char(c) if c == ' ' => {
+                        let new_mode = mode.clone();
                         self.is_editing = None;
+                        if new_mode != "words" {
+                            return ModeAction::SwitchMode(new_mode);
+                        }
                     }
                     _ => {}
                 },
@@ -155,7 +159,10 @@ impl Handler for Words {
                         self.words = self.custom_words;
                         self.reset();
                     }
-                    KeyCode::Enter | KeyCode::Esc => {
+                    KeyCode::Enter => {
+                        self.is_editing = None;
+                    }
+                    KeyCode::Char(c) if c == ' ' => {
                         self.is_editing = None;
                     }
                     _ => {}
@@ -213,9 +220,29 @@ impl Handler for Words {
                 }
             },
             KeyCode::Char(c) => {
+                if c == ' ' && self.start.is_none() {
+                    match self.selected_option {
+                        Options::WordCount(count) => {
+                            if WORD_COUNTS.contains(&count) {
+                                self.words = count;
+                                self.reset();
+                            } else {
+                                self.is_editing = Some(Options::WordCount(1000));
+                                self.words = self.custom_words;
+                                self.reset();
+                            }
+                        }
+                        Options::Mode(_) => {
+                            self.is_editing = Some(Options::Mode("words".to_string()));
+                        }
+                    }
+                    return ModeAction::None;
+                }
+
                 if self.start.is_none() {
                     self.start = Some(Instant::now());
                 }
+
                 if c == 'h' && key.modifiers.contains(KeyModifiers::CONTROL) {
                     if let Some((typed_idx, typed_word)) =
                         self.typed_words.iter_mut().enumerate().last()

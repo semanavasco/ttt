@@ -58,7 +58,7 @@ pub fn draw(frame: &mut Frame, state: &State) {
                 Span::from(" | Navigate Options "),
                 Span::from("(<- | ->)").style(SELECTED_STYLE),
                 Span::from(" | Select "),
-                Span::from("(ENTER)").style(SELECTED_STYLE),
+                Span::from("(ENTER/SPACE)").style(SELECTED_STYLE),
                 Span::from(" | Press any key to start your typing session... "),
             ]
         }
