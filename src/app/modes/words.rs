@@ -334,10 +334,10 @@ impl Renderer for Words {
                 Style::default()
             };
 
-            if let Options::WordCount(count) = self.selected_option {
-                if c == count {
-                    style = style.underlined();
-                }
+            if let Options::WordCount(count) = self.selected_option
+                && c == count
+            {
+                style = style.underlined();
             }
 
             [Span::styled(format!("{}", c), style), Span::from(" | ")]
@@ -352,10 +352,10 @@ impl Renderer for Words {
         config_spans.push(
             if !WORD_COUNTS.contains(&current_words)
                 || custom_selected
-                || self.is_editing.as_ref().is_some_and(|x| match x {
-                    Options::WordCount(_) => true,
-                    _ => false,
-                })
+                || self
+                    .is_editing
+                    .as_ref()
+                    .is_some_and(|x| matches!(x, Options::WordCount(_)))
             {
                 let val = if !WORD_COUNTS.contains(&current_words) {
                     current_words

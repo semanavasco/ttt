@@ -317,10 +317,10 @@ impl Renderer for Clock {
                 Style::default()
             };
 
-            if let Options::Durations(duration) = self.selected_option {
-                if d == duration {
-                    style = style.underlined();
-                }
+            if let Options::Durations(duration) = self.selected_option
+                && d == duration
+            {
+                style = style.underlined();
             }
 
             [Span::styled(format!("{}s", d), style), Span::from(" | ")]
@@ -335,10 +335,10 @@ impl Renderer for Clock {
         config_spans.push(
             if !DURATIONS.contains(&current_duration)
                 || custom_selected
-                || self.is_editing.as_ref().is_some_and(|x| match x {
-                    Options::Durations(_) => true,
-                    _ => false,
-                })
+                || self
+                    .is_editing
+                    .as_ref()
+                    .is_some_and(|x| matches!(x, Options::Durations(_)))
             {
                 let val = if !DURATIONS.contains(&current_duration) {
                     current_duration
