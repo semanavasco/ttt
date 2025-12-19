@@ -5,7 +5,7 @@ use crossterm::event::{
     KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
 };
 use crossterm::execute;
-use ttt::app::{self, state::State};
+use ttt::app::{self, App};
 use ttt::cli::Args;
 use ttt::config::Config;
 
@@ -43,8 +43,8 @@ fn main() -> io::Result<()> {
         PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
     );
 
-    let mut state = State::from_config(&config);
-    let result = app::run(&mut terminal, &mut state, &config);
+    let mut app = App::from_config(&config);
+    let result = app::run(&mut terminal, &mut app, &config);
 
     let _ = execute!(stdout(), PopKeyboardEnhancementFlags);
     ratatui::restore();

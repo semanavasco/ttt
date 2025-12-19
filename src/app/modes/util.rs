@@ -1,4 +1,8 @@
-use std::time::Duration;
+//! # Mode Utilities Module
+//!
+//! This module provides shared helper functions used by various game modes
+//! for rendering text, calculating metrics, and displaying visual components
+//! like charts.
 
 use ratatui::{
     buffer::Buffer,
@@ -10,6 +14,16 @@ use ratatui::{
 
 use crate::app::ui::{CORRECT_STYLE, CURSOR_STYLE, INCORRECT_STYLE, PENDING_STYLE, SKIPPED_STYLE};
 
+/// Generates a list of styled text spans for the typing area.
+///
+/// This function compares the user's typed input against the target text and
+/// applies appropriate styles ([CORRECT_STYLE], [INCORRECT_STYLE],
+/// [SKIPPED_STYLE], [PENDING_STYLE]) to each character.
+/// It also handles the visual cursor placement.
+///
+/// # Arguments
+/// * `target_words` - The complete list of words to be typed.
+/// * `typed_words` - The list of words typed by the user so far.
 pub fn get_typing_spans<'a>(
     target_words: &'a [String],
     typed_words: &'a [String],
@@ -82,52 +96,14 @@ pub fn get_typing_spans<'a>(
     spans
 }
 
-pub fn calculate_wpm_accuracy(
-    duration: Duration,
-    typed_words: &[String],
-    target_words: &[String],
-) -> (f64, f64) {
-    let duration_mins = duration.as_secs_f64() / 60.0;
-
-    if typed_words.is_empty() || duration_mins == 0.0 {
-        return (0.0, 0.0);
-    }
-
-    let mut total_chars = 0;
-    let mut correct_chars = 0;
-
-    for (i, typed) in typed_words.iter().enumerate() {
-        if let Some(target) = target_words.get(i) {
-            total_chars += typed.len();
-
-            let min_len = typed.len().min(target.len());
-            for j in 0..min_len {
-                if typed.chars().nth(j) == target.chars().nth(j) {
-                    correct_chars += 1;
-                }
-            }
-
-            if i < typed_words.len() - 1 {
-                total_chars += 1;
-                if typed == target {
-                    correct_chars += 1;
-                }
-            }
-        }
-    }
-
-    let accuracy = if total_chars > 0 {
-        (correct_chars as f64 / total_chars as f64) * 100.0
-    } else {
-        0.0
-    };
-
-    let gross_wpm = (total_chars as f64 / 5.0) / duration_mins;
-    let wpm = gross_wpm * (accuracy / 100.0);
-
-    (wpm, accuracy)
-}
-
+/// Renders a line chart displaying WPM over time.
+///
+/// # Arguments
+/// * `area` - The rectangular area where the chart should be drawn.
+/// * `buf` - The rendering buffer.
+/// * `datasets` - A vector of `Dataset` objects containing the data points.
+/// * `duration` - The total duration of the session (used for the X-axis bounds).
+/// * `max_wpm` - The maximum WPM achieved (used for the Y-axis bounds).
 pub fn render_wpm_chart(
     area: Rect,
     buf: &mut Buffer,
