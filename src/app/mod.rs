@@ -7,7 +7,10 @@ use std::io;
 
 use ratatui::DefaultTerminal;
 
-use crate::{app::state::{Menu, State}, config::Config};
+use crate::{
+    app::state::{Menu, State},
+    config::Config,
+};
 
 pub fn run(terminal: &mut DefaultTerminal, state: &mut State, config: &Config) -> io::Result<()> {
     while !state.exit {

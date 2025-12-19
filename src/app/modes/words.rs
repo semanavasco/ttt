@@ -5,9 +5,9 @@ use rand::seq::SliceRandom;
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style},
+    style::{Color, Modifier, Style, Stylize},
     symbols,
-    text::Line,
+    text::{Line, Span},
     widgets::{Dataset, GraphType, Paragraph, Widget, Wrap},
 };
 
@@ -15,7 +15,7 @@ use crate::{
     Resource,
     app::{
         modes::{
-            GameStats, Handler, Mode, ModeAction, Renderer,
+            AVAILABLE_MODES, GameStats, Handler, Mode, ModeAction, Renderer,
             util::{calculate_wpm_accuracy, get_typing_spans, render_wpm_chart},
         },
         ui::SELECTED_STYLE,
@@ -23,8 +23,24 @@ use crate::{
     config::Config,
 };
 
+const WORD_COUNTS: [usize; 4] = [25, 50, 75, 100];
+
+enum Options {
+    Mode(String),
+    WordCount(usize),
+}
+
+impl Default for Options {
+    fn default() -> Self {
+        Options::Mode("words".to_string())
+    }
+}
+
 pub struct Words {
+    selected_option: Options,
     words: usize,
+    custom_words: usize,
+    is_editing: Option<Options>,
     start: Option<Instant>,
     end: Option<Instant>,
     target_words: Vec<String>,
@@ -35,8 +51,17 @@ pub struct Words {
 
 impl Words {
     pub fn new(words: usize) -> Self {
+        let custom_words = if WORD_COUNTS.contains(&words) {
+            50
+        } else {
+            words
+        };
+
         Self {
+            selected_option: Options::default(),
             words,
+            custom_words,
+            is_editing: None,
             start: None,
             end: None,
             target_words: Vec::new(),
@@ -77,13 +102,116 @@ impl Handler for Words {
 
         if let Mode::Words { count } = &config.defaults.mode {
             self.words = *count;
+            if !WORD_COUNTS.contains(count) {
+                self.custom_words = *count;
+            }
         }
 
         self.generate_words();
     }
 
     fn handle_input(&mut self, key: KeyEvent) -> ModeAction {
+        if let Some(editing) = &mut self.is_editing {
+            match editing {
+                Options::Mode(mode) => match key.code {
+                    KeyCode::Left | KeyCode::Down => {
+                        let current_idx = AVAILABLE_MODES
+                            .iter()
+                            .position(|&m| m == mode.as_str())
+                            .unwrap_or(0);
+                        let prev_idx = current_idx
+                            .checked_sub(1)
+                            .unwrap_or(AVAILABLE_MODES.len() - 1);
+                        *mode = AVAILABLE_MODES[prev_idx].to_string();
+                    }
+                    KeyCode::Right | KeyCode::Up => {
+                        let current_idx = AVAILABLE_MODES
+                            .iter()
+                            .position(|&m| m == mode.as_str())
+                            .unwrap_or(0);
+                        let next_idx = (current_idx + 1) % AVAILABLE_MODES.len();
+                        *mode = AVAILABLE_MODES[next_idx].to_string();
+                    }
+                    KeyCode::Enter => {
+                        let new_mode = mode.clone();
+                        self.is_editing = None;
+                        if new_mode != "words" {
+                            return ModeAction::SwitchMode(new_mode);
+                        }
+                    }
+                    KeyCode::Esc => {
+                        self.is_editing = None;
+                    }
+                    _ => {}
+                },
+                Options::WordCount(_) => match key.code {
+                    KeyCode::Left | KeyCode::Down => {
+                        self.custom_words = self.custom_words.saturating_sub(5).max(10);
+                        self.words = self.custom_words;
+                        self.reset();
+                    }
+                    KeyCode::Right | KeyCode::Up => {
+                        self.custom_words += 5;
+                        self.words = self.custom_words;
+                        self.reset();
+                    }
+                    KeyCode::Enter | KeyCode::Esc => {
+                        self.is_editing = None;
+                    }
+                    _ => {}
+                },
+            }
+            return ModeAction::None;
+        }
+
         match key.code {
+            KeyCode::Left => match self.selected_option {
+                Options::Mode(_) => self.selected_option = Options::WordCount(1000),
+                Options::WordCount(count) => {
+                    self.selected_option = if count == WORD_COUNTS[0] {
+                        Options::default()
+                    } else if count == WORD_COUNTS[1] {
+                        Options::WordCount(WORD_COUNTS[0])
+                    } else if count == WORD_COUNTS[2] {
+                        Options::WordCount(WORD_COUNTS[1])
+                    } else if count == WORD_COUNTS[3] {
+                        Options::WordCount(WORD_COUNTS[2])
+                    } else {
+                        Options::WordCount(WORD_COUNTS[3])
+                    }
+                }
+            },
+            KeyCode::Right => match self.selected_option {
+                Options::Mode(_) => self.selected_option = Options::WordCount(WORD_COUNTS[0]),
+                Options::WordCount(count) => {
+                    self.selected_option = if count == WORD_COUNTS[0] {
+                        Options::WordCount(WORD_COUNTS[1])
+                    } else if count == WORD_COUNTS[1] {
+                        Options::WordCount(WORD_COUNTS[2])
+                    } else if count == WORD_COUNTS[2] {
+                        Options::WordCount(WORD_COUNTS[3])
+                    } else if count == WORD_COUNTS[3] {
+                        Options::WordCount(1000)
+                    } else {
+                        Options::default()
+                    }
+                }
+            },
+            KeyCode::Enter => match self.selected_option {
+                Options::WordCount(count) => {
+                    if WORD_COUNTS.contains(&count) {
+                        self.words = count;
+                        self.reset();
+                    } else {
+                        self.is_editing = Some(Options::WordCount(1000));
+                        self.words = self.custom_words;
+                        self.reset();
+                    }
+                }
+                Options::Mode(_) => {
+                    self.is_editing = Some(Options::Mode("words".to_string()));
+                }
+            },
             KeyCode::Char(c) => {
                 if self.start.is_none() {
                     self.start = Some(Instant::now());
@@ -178,6 +306,85 @@ impl Renderer for Words {
             Constraint::Min(5),
         ])
         .split(area);
+
+        let current_words = self.words;
+
+        let mut config_spans = vec![];
+
+        let (mode_text, style) = if let Some(Options::Mode(ref m)) = self.is_editing {
+            (m.as_str(), SELECTED_STYLE.fg(Color::Yellow).underlined())
+        } else {
+            let mut style = SELECTED_STYLE;
+            if let Options::Mode(_) = self.selected_option {
+                style = style.underlined();
+            }
+            ("words", style)
+        };
+
+        config_spans.push(Span::styled(
+            format!("{}{}", mode_text[0..1].to_uppercase(), &mode_text[1..]),
+            style,
+        ));
+        config_spans.push(Span::from(" | "));
+
+        config_spans.extend(WORD_COUNTS.iter().flat_map(|&c| {
+            let mut style = if current_words == c {
+                SELECTED_STYLE
+            } else {
+                Style::default()
+            };
+
+            if let Options::WordCount(count) = self.selected_option {
+                if c == count {
+                    style = style.underlined();
+                }
+            }
+
+            [Span::styled(format!("{}", c), style), Span::from(" | ")]
+        }));
+
+        let custom_selected = if let Options::WordCount(c) = self.selected_option {
+            !WORD_COUNTS.contains(&c)
+        } else {
+            false
+        };
+
+        config_spans.push(
+            if !WORD_COUNTS.contains(&current_words)
+                || custom_selected
+                || self.is_editing.as_ref().is_some_and(|x| match x {
+                    Options::WordCount(_) => true,
+                    _ => false,
+                })
+            {
+                let val = if !WORD_COUNTS.contains(&current_words) {
+                    current_words
+                } else {
+                    self.custom_words
+                };
+
+                let mut style = if !WORD_COUNTS.contains(&current_words) {
+                    SELECTED_STYLE
+                } else {
+                    Style::default()
+                };
+
+                if custom_selected {
+                    style = style.underlined();
+                }
+
+                if let Some(Options::WordCount(_)) = self.is_editing {
+                    style = style.fg(Color::Yellow);
+                }
+
+                Span::from(format!(" 󱁤  {}", val)).style(style)
+            } else {
+                Span::from(" 󱁤 ").style(Style::default())
+            },
+        );
+
+        let config = Paragraph::new(Line::from(config_spans)).centered();
+        config.render(layout[0], buf);
 
         let preview = Paragraph::new(self.target_words.join(" "))
             .style(Style::default().fg(Color::DarkGray))
