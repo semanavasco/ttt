@@ -1,3 +1,9 @@
+//! # TTT Library
+//!
+//! The core library for TTT.
+//! It manages application state, configuration, command-line parsing, and
+//! embedded resource management.
+
 use std::{fs, io::Error};
 
 use directories::ProjectDirs;
@@ -7,11 +13,27 @@ pub mod app;
 pub mod cli;
 pub mod config;
 
+/// Manager for application resources.
+///
+/// This struct handles both embedded default texts and external user-provided
+/// text files for typing tests.
 #[derive(Embed)]
 #[folder = "res/"]
 pub struct Resource;
 
 impl Resource {
+    /// Retrieves text data by name.
+    ///
+    /// It first checks the user's local configuration directory for a matching
+    /// file in the `texts/` subdirectory. If not found, it falls back to
+    /// searching the embedded resources.
+    ///
+    /// # Arguments
+    /// * `name` - The identifier of the text to retrieve (e.g., "english", "lorem").
+    ///
+    /// # Errors
+    /// Returns an [`Error`] if the config directory cannot be determined or if
+    /// the requested text does not exist in either local storage or embedded resources.
     pub fn get_text(name: &str) -> Result<Vec<u8>, Error> {
         let project_dir = ProjectDirs::from("com", "semanavasco", "ttt").ok_or_else(|| {
             Error::new(
