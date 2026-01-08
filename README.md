@@ -18,18 +18,19 @@ cargo install --path .
 $ ttt
 A simple Terminal Typing Test utility.
 
-Usage: ttt [OPTIONS]
+Usage: ttt [OPTIONS] [COMMAND]
+
+Commands:
+  clock  Timer-based game mode
+  words  Wourd-count-based game mode
+  help   Print this message or the help of the given subcommand(s)
 
 Options:
-  -t, --text <TEXT>          The text to get the words from
-  -w, --words <WORDS>        The number of words the test includes [modes: words]
-  -m, --mode <MODE>          The game mode to use [possible values: clock, words, ...]
-  -d, --duration <DURATION>  The duration of the test [modes: clock]
-  -c, --config <CONFIG>      Read config from file
-  -s, --save-config          Save config, applies overrides provided by other arguments
-      --defaults             Use default settings
-  -h, --help                 Print help
-  -V, --version              Print version
+  -c, --config <CONFIG>  Read config from file
+  -s, --save-config      Save config, applies overrides provided by other arguments
+      --defaults         Use default settings
+  -h, --help             Print help
+  -V, --version          Print version
 ```
 
 ### Example Commands
@@ -38,14 +39,14 @@ Options:
 # Run with saved config or defaults
 $ ttt
 
-# Run with custom settings
-$ ttt --mode clock --words 50 --duration 45
+# Run clock mode with 60 second duration
+$ ttt clock -d 60
 
-# Use a specific language
-$ ttt --text spanish
+# Run words mode with 100 words using Spanish text
+$ ttt words -c 100 -t spanish
 
 # Save current settings as default
-$ ttt --words 75 --duration 60 --save-config
+$ ttt clock -d 45 -t english --save-config
 
 # Load from custom config file
 $ ttt --config ~/my-config.toml
@@ -53,14 +54,15 @@ $ ttt --config ~/my-config.toml
 
 ## Embedded Texts
 
-| Name         | Description                        |
-| ------------ | ---------------------------------- |
-| `lorem`      | 100 words of Lorem Ipsum (default) |
-| `english`    | 100 most common English words      |
-| `spanish`    | 100 most common Spanish words      |
-| `portuguese` | 100 most common Portuguese words   |
-| `german`     | 100 most common German words       |
-| `swedish`    | 100 most common Swedish words      |
+| Name         | Description                             |
+| ------------ | --------------------------------------- |
+| `english`    | 100 most common English words (default) |
+| `french`     | 100 most common French words            |
+| `german`     | 100 most common German words            |
+| `lorem`      | 100 words of Lorem Ipsum                |
+| `portuguese` | 100 most common Portuguese words        |
+| `spanish`    | 100 most common Spanish words           |
+| `swedish`    | 100 most common Swedish words           |
 
 ## Configuration
 
@@ -121,32 +123,38 @@ impl Renderer for NewMode {
 ```rust
 pub mod newmode;
 
-// ...
+use crate::app::modes::newmode::NewMode;
 
-pub const AVAILABLE_MODES: &[&str] = &["clock", "words", "newmode"];
-
-pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
-    match mode {
-        Mode::Clock { duration } => Box::new(Clock::new(*duration)),
-        Mode::Words { count } => Box::new(Words::new(*count)),
-        Mode::NewMode { /* ... */ } => Box::new(NewMode::new(/* ... */)),
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
+// Add variant to Mode enum (derives Subcommand for CLI integration)
+#[derive(Serialize, Deserialize, Subcommand, Display, EnumIter, VariantNames, Clone)]
+#[serde(tag = "mode", rename_all = "lowercase")]
 pub enum Mode {
     Clock { /* ... */ },
     Words { /* ... */ },
-    NewMode { /* your config */ },
+
+    /// New game mode
+    NewMode {
+        // your mode-specific fields with defaults
+    },
 }
 
+// Update create_mode factory
+pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
+    match mode {
+        Mode::Clock { duration, text } => Box::new(Clock::new(/* ... */)),
+        Mode::Words { count, text } => Box::new(Words::new(/* ... */)),
+        Mode::NewMode { text, /* ... */ } => Box::new(NewMode::new(/* ... */)),
+    }
+}
+
+// Update Mode::default_for helper
 impl Mode {
-    pub fn from_string(mode: &str) -> Option<Self> {
-        match mode {
-            "clock" => Some(Mode::Clock { /* ... */ }),
-            "words" => Some(Mode::Words { /* ... */ }),
-            "newmode" => Some(Mode::NewMode { /* ... */ }),
-            _ => None,
+    pub fn default_for(name: &str) -> Self {
+        match name {
+            "clock" => Mode::Clock { /* defaults */ },
+            "words" => Mode::Words { /* defaults */ },
+            "newmode" => Mode::NewMode { /* defaults */ },
+            _ => Mode::default(),
         }
     }
 }
