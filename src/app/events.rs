@@ -24,7 +24,7 @@ pub enum Action {
     /// The input was consumed or ignored; no global state change is needed.
     None,
     /// Request to completely replace the current game mode (e.g., from 'Clock' to 'Words').
-    SwitchMode(String),
+    SwitchMode(Mode),
     /// Request to transition the application's lifecycle state (e.g., from [`State::Home`] to [`State::Running`]).
     SwitchState(State),
     /// Request to quit the application.
@@ -52,7 +52,7 @@ pub fn handle_events(app: &mut App, config: &Config) -> io::Result<()> {
 
         match app.mode.handle_input(key) {
             Action::None => {}
-            Action::SwitchMode(mode_str) => switch_mode(app, &mode_str, config),
+            Action::SwitchMode(mode) => switch_mode(app, &mode, config),
             Action::SwitchState(state) => app.state = state,
             Action::Quit => app.should_exit = true,
         }
@@ -61,13 +61,12 @@ pub fn handle_events(app: &mut App, config: &Config) -> io::Result<()> {
     Ok(())
 }
 
-/// Replaces the current active mode with a new one based on a string identifier.
+/// Replaces the current active mode with a new one.
 ///
-/// If the `mode_str` is valid, the new mode is created, initialized with the
-/// current config, and swapped into the `app` instance.
-fn switch_mode(app: &mut App, mode_str: &str, config: &Config) {
-    if let Some(mode) = Mode::from_string(mode_str) {
-        app.mode = create_mode(&mode);
-        app.mode.initialize(config);
-    }
+/// The new mode is created, initialized with the current config,
+/// and swapped into the `app` instance.
+fn switch_mode(app: &mut App, mode: &Mode, config: &Config) {
+    let mut new_mode = create_mode(mode);
+    new_mode.initialize(config);
+    app.mode = new_mode;
 }

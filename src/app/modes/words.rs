@@ -10,13 +10,14 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Dataset, GraphType, Paragraph, Widget, Wrap},
 };
+use strum::VariantNames;
 
 use crate::{
     Resource,
     app::{
         State,
         modes::{
-            AVAILABLE_MODES, Action, GameStats, Handler, Mode, Renderer,
+            Action, GameStats, Handler, Mode, Renderer,
             util::{get_typing_spans, render_wpm_chart},
         },
         ui::SELECTED_STYLE,
@@ -48,10 +49,11 @@ pub struct Words {
     typed_words: Vec<String>,
     timestamps: Vec<(usize, Instant)>,
     dictionary: Vec<String>,
+    text: String,
 }
 
 impl Words {
-    pub fn new(words: usize) -> Self {
+    pub fn new(words: usize, text: &String) -> Self {
         let custom_words = if WORD_COUNTS.contains(&words) {
             50
         } else {
@@ -69,6 +71,7 @@ impl Words {
             typed_words: Vec::new(),
             timestamps: Vec::new(),
             dictionary: Vec::new(),
+            text: text.clone(),
         }
     }
 
@@ -121,21 +124,22 @@ impl Handler for Words {
         self.end = None;
         self.typed_words.clear();
 
-        let bytes = Resource::get_text(&config.defaults.text)
-            .unwrap_or_else(|_| panic!("Couldn't find \"{}\" text", &config.defaults.text));
+        if let Mode::Words { count, text } = &config.defaults.mode {
+            self.words = *count;
+            if !WORD_COUNTS.contains(count) {
+                self.custom_words = *count;
+            }
+            self.text = text.clone();
+        }
+
+        let bytes = Resource::get_text(&self.text)
+            .unwrap_or_else(|_| panic!("Couldn't find \"{}\" text", &self.text));
 
         self.dictionary = str::from_utf8(&bytes)
             .expect("Text contains non-utf8 characters")
             .lines()
             .map(ToString::to_string)
             .collect();
-
-        if let Mode::Words { count } = &config.defaults.mode {
-            self.words = *count;
-            if !WORD_COUNTS.contains(count) {
-                self.custom_words = *count;
-            }
-        }
 
         self.generate_words();
     }
@@ -161,28 +165,28 @@ impl Handler for Words {
             match editing {
                 Options::Mode(mode) => match key.code {
                     KeyCode::Left | KeyCode::Down => {
-                        let current_idx = AVAILABLE_MODES
+                        let current_idx = Mode::VARIANTS
                             .iter()
                             .position(|&m| m == mode.as_str())
                             .unwrap_or(0);
                         let prev_idx = current_idx
                             .checked_sub(1)
-                            .unwrap_or(AVAILABLE_MODES.len() - 1);
-                        *mode = AVAILABLE_MODES[prev_idx].to_string();
+                            .unwrap_or(Mode::VARIANTS.len() - 1);
+                        *mode = Mode::VARIANTS[prev_idx].to_string();
                     }
                     KeyCode::Right | KeyCode::Up => {
-                        let current_idx = AVAILABLE_MODES
+                        let current_idx = Mode::VARIANTS
                             .iter()
                             .position(|&m| m == mode.as_str())
                             .unwrap_or(0);
-                        let next_idx = (current_idx + 1) % AVAILABLE_MODES.len();
-                        *mode = AVAILABLE_MODES[next_idx].to_string();
+                        let next_idx = (current_idx + 1) % Mode::VARIANTS.len();
+                        *mode = Mode::VARIANTS[next_idx].to_string();
                     }
                     KeyCode::Enter | KeyCode::Char(' ') => {
                         let new_mode = mode.clone();
                         self.is_editing = None;
                         if new_mode != "words" {
-                            return Action::SwitchMode(new_mode);
+                            return Action::SwitchMode(Mode::default_for(&new_mode));
                         }
                     }
                     _ => {}

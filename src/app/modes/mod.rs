@@ -12,6 +12,7 @@ pub mod words;
 
 use std::time::Duration;
 
+use clap::Subcommand;
 use crossterm::event::KeyEvent;
 use ratatui::{
     buffer::Buffer,
@@ -20,6 +21,7 @@ use ratatui::{
     widgets::{Paragraph, Widget},
 };
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumIter, VariantNames};
 
 use crate::{
     app::{
@@ -31,15 +33,14 @@ use crate::{
     config::Config,
 };
 
-/// A list of mode identifiers used for configuration and CLI parsing.
-pub const AVAILABLE_MODES: &[&str] = &["clock", "words"];
-
 /// Factory function to create a new boxed [`GameMode`] based on a [`Mode`]
 /// configuration.
 pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
     match mode {
-        Mode::Clock { duration } => Box::new(Clock::new(*duration)),
-        Mode::Words { count } => Box::new(Words::new(*count)),
+        Mode::Clock { duration, text } => {
+            Box::new(Clock::new(Duration::from_secs(*duration), text))
+        }
+        Mode::Words { count, text } => Box::new(Words::new(*count, text)),
     }
 }
 
@@ -59,32 +60,35 @@ pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
 /// mode = "clock"
 /// duration = 30
 /// ```
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Subcommand, Display, EnumIter, VariantNames, Clone)]
+#[strum(serialize_all = "lowercase")]
 #[serde(tag = "mode", rename_all = "lowercase")]
 pub enum Mode {
+    /// Timer-based game mode.
     Clock {
-        #[serde(default = "default_clock_duration", with = "duration_as_secs")]
-        duration: Duration,
+        /// The text to use for the typing test.
+        #[arg(short, long, default_value_t = default_text())]
+        #[serde(default = "default_text")]
+        text: String,
+
+        /// The duration of the typing test.
+        #[arg(short, long, default_value_t = default_clock_duration())]
+        #[serde(default = "default_clock_duration")]
+        duration: u64,
     },
 
+    /// Wourd-count-based game mode.
     Words {
+        /// The text to use for the typing test.
+        #[arg(short, long, default_value_t = default_text())]
+        #[serde(default = "default_text")]
+        text: String,
+
+        /// The amount of words to type.
+        #[arg(short, long, default_value_t = default_words_count())]
         #[serde(default = "default_words_count")]
         count: usize,
     },
-}
-
-impl Mode {
-    pub fn from_string(mode: &str) -> Option<Self> {
-        match mode {
-            "clock" => Some(Mode::Clock {
-                duration: default_clock_duration(),
-            }),
-            "words" => Some(Mode::Words {
-                count: default_words_count(),
-            }),
-            _ => None,
-        }
-    }
 }
 
 /// Logic handler for a game mode.
@@ -267,35 +271,36 @@ impl Default for Mode {
     fn default() -> Self {
         Mode::Clock {
             duration: default_clock_duration(),
+            text: default_text(),
         }
     }
 }
 
-pub fn default_clock_duration() -> Duration {
-    Duration::from_secs(30)
+impl Mode {
+    /// Returns a default Mode for a given mode name string.
+    pub fn default_for(name: &str) -> Self {
+        match name {
+            "clock" => Mode::Clock {
+                duration: default_clock_duration(),
+                text: default_text(),
+            },
+            "words" => Mode::Words {
+                count: default_words_count(),
+                text: default_text(),
+            },
+            _ => Mode::default(),
+        }
+    }
+}
+
+pub fn default_clock_duration() -> u64 {
+    30
 }
 
 pub fn default_words_count() -> usize {
     50
 }
 
-/// [`Duration`] serializer as a simple integer representing seconds for serde.
-mod duration_as_secs {
-    use serde::{self, Deserialize, Deserializer, Serializer};
-    use std::time::Duration;
-
-    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_u64(duration.as_secs())
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let seconds = u64::deserialize(deserializer)?;
-        Ok(Duration::from_secs(seconds))
-    }
+pub fn default_text() -> String {
+    "english".to_string()
 }

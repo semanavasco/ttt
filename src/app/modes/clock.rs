@@ -10,13 +10,14 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Dataset, GraphType, Paragraph, Widget, Wrap},
 };
+use strum::VariantNames;
 
 use crate::{
     Resource,
     app::{
         State,
         modes::{
-            AVAILABLE_MODES, Action, GameStats, Handler, Mode, Renderer,
+            Action, GameStats, Handler, Mode, Renderer,
             util::{get_typing_spans, render_wpm_chart},
         },
         ui::SELECTED_STYLE,
@@ -50,7 +51,7 @@ pub struct Clock {
 }
 
 impl Clock {
-    pub fn new(duration: Duration) -> Self {
+    pub fn new(duration: Duration, text: &String) -> Self {
         let duration_secs = duration.as_secs();
         let custom_duration = if DURATIONS.contains(&duration_secs) {
             30
@@ -67,7 +68,7 @@ impl Clock {
             target_words: Vec::new(),
             typed_words: Vec::new(),
             timestamps: Vec::new(),
-            text: String::new(),
+            text: text.clone(),
         }
     }
 
@@ -107,15 +108,14 @@ impl Clock {
 
 impl Handler for Clock {
     fn initialize(&mut self, config: &Config) {
-        self.text = config.defaults.text.clone();
         self.typed_words.clear();
         self.start = None;
-        if let Mode::Clock { duration } = &config.defaults.mode {
-            self.duration = *duration;
-            let secs = duration.as_secs();
-            if !DURATIONS.contains(&secs) {
-                self.custom_duration = secs;
+        if let Mode::Clock { duration, text } = &config.defaults.mode {
+            self.duration = Duration::from_secs(*duration);
+            if !DURATIONS.contains(duration) {
+                self.custom_duration = *duration;
             }
+            self.text = text.clone();
         }
         self.generate_words();
     }
@@ -140,28 +140,28 @@ impl Handler for Clock {
             match editing {
                 Options::Mode(mode) => match key.code {
                     KeyCode::Left | KeyCode::Down => {
-                        let current_idx = AVAILABLE_MODES
+                        let current_idx = Mode::VARIANTS
                             .iter()
                             .position(|&m| m == mode.as_str())
                             .unwrap_or(0);
                         let prev_idx = current_idx
                             .checked_sub(1)
-                            .unwrap_or(AVAILABLE_MODES.len() - 1);
-                        *mode = AVAILABLE_MODES[prev_idx].to_string();
+                            .unwrap_or(Mode::VARIANTS.len() - 1);
+                        *mode = Mode::VARIANTS[prev_idx].to_string();
                     }
                     KeyCode::Right | KeyCode::Up => {
-                        let current_idx = AVAILABLE_MODES
+                        let current_idx = Mode::VARIANTS
                             .iter()
                             .position(|&m| m == mode.as_str())
                             .unwrap_or(0);
-                        let next_idx = (current_idx + 1) % AVAILABLE_MODES.len();
-                        *mode = AVAILABLE_MODES[next_idx].to_string();
+                        let next_idx = (current_idx + 1) % Mode::VARIANTS.len();
+                        *mode = Mode::VARIANTS[next_idx].to_string();
                     }
                     KeyCode::Enter | KeyCode::Char(' ') => {
                         let new_mode = mode.clone();
                         self.is_editing = None;
                         if new_mode != "clock" {
-                            return Action::SwitchMode(new_mode);
+                            return Action::SwitchMode(Mode::default_for(&new_mode));
                         }
                     }
                     _ => {}
