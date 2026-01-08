@@ -11,6 +11,7 @@
 pub mod clock;
 pub mod util;
 pub mod words;
+pub mod zen;
 
 use std::time::Duration;
 
@@ -22,7 +23,7 @@ use strum::{Display, EnumIter, VariantNames};
 use crate::{
     app::{
         events::Action,
-        modes::{clock::Clock, words::Words},
+        modes::{clock::Clock, words::Words, zen::Zen},
         ui::StyledChar,
     },
     config::Config,
@@ -35,6 +36,7 @@ pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
             Box::new(Clock::new(Duration::from_secs(*duration), text))
         }
         Mode::Words { count, text } => Box::new(Words::new(*count, text)),
+        Mode::Zen => Box::new(Zen::new()),
     }
 }
 
@@ -90,6 +92,9 @@ pub enum Mode {
         #[serde(default = "default_words_count")]
         count: usize,
     },
+
+    /// Free-typing mode with no target text.
+    Zen,
 }
 
 impl Default for Mode {
@@ -113,6 +118,7 @@ impl Mode {
                 count: default_words_count(),
                 text: default_text(),
             },
+            "zen" => Mode::Zen,
             _ => Mode::default(),
         }
     }
@@ -122,6 +128,7 @@ impl Mode {
         match self {
             Mode::Clock { .. } => "clock",
             Mode::Words { .. } => "words",
+            Mode::Zen => "zen",
         }
     }
 }
