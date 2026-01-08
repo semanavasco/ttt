@@ -1,17 +1,17 @@
 //! # Events Module
 //!
 //! This module handles terminal event polling and input processing.
-//! It translates raw [`KeyEvent`][crossterm::event::KeyEvent]s into application-level [`Action`]s,
-//! enabling state transitions and mode switching.
+//! Global controls (ESC, TAB, arrows...) are handled here, with mode-specific
+//! input delegated to the active game mode.
 
 use std::{io, time::Duration};
 
-use crossterm::event::{self, Event, KeyEventKind, poll};
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, poll};
 
 use crate::{
     app::{
         App, State,
-        modes::{Mode, create_mode},
+        modes::{Direction, Mode, create_mode},
     },
     config::Config,
 };
@@ -32,14 +32,6 @@ pub enum Action {
 }
 
 /// Polls for and processes terminal events.
-///
-/// This function waits for up to 100ms for an event. If a key event occurs:
-/// 1. It filters out [`KeyEventKind::Release`] to avoid double-processing.
-/// 2. It passes the key to the current active mode.
-/// 3. It executes any [`Action`] returned by the mode.
-///
-/// # Errors
-/// Returns an [`io::Error`] if polling or reading the terminal event stream fails.
 pub fn handle_events(app: &mut App, config: &Config) -> io::Result<()> {
     if !poll(Duration::from_millis(100))? {
         return Ok(());
@@ -50,23 +42,124 @@ pub fn handle_events(app: &mut App, config: &Config) -> io::Result<()> {
             return Ok(());
         }
 
-        match app.mode.handle_input(key) {
-            Action::None => {}
-            Action::SwitchMode(mode) => switch_mode(app, &mode, config),
-            Action::SwitchState(state) => app.state = state,
-            Action::Quit => app.should_exit = true,
-        }
+        let action = match app.state {
+            State::Home => handle_home_input(app, key),
+            State::Running => handle_running_input(app, key),
+            State::Complete => handle_complete_input(app, key),
+        };
+
+        execute_action(app, action, config);
     }
 
     Ok(())
 }
 
-/// Replaces the current active mode with a new one.
+/// Handles input on the Home screen (options navigation, mode selection, typing start).
+fn handle_home_input(app: &mut App, key: KeyEvent) -> Action {
+    // Check if mode is editing a custom option
+    let mode_editing = app.mode.is_option_editing();
+
+    match key.code {
+        KeyCode::Esc => Action::Quit,
+
+        KeyCode::Left | KeyCode::Down => {
+            if app.is_editing || mode_editing {
+                app.adjust_current_option(Direction::Left);
+            } else {
+                app.navigate_left();
+            }
+            Action::None
+        }
+
+        KeyCode::Right | KeyCode::Up => {
+            if app.is_editing || mode_editing {
+                app.adjust_current_option(Direction::Right);
+            } else {
+                app.navigate_right();
+            }
+            Action::None
+        }
+
+        KeyCode::Enter | KeyCode::Char(' ') => {
+            if let Some(mode_name) = app.select_current_option() {
+                Action::SwitchMode(Mode::default_for(&mode_name))
+            } else {
+                Action::None
+            }
+        }
+
+        // Any typing character starts the game
+        KeyCode::Char(_) => {
+            let action = app.mode.handle_input(key);
+            if matches!(action, Action::None) {
+                Action::SwitchState(State::Running)
+            } else {
+                action
+            }
+        }
+
+        _ => Action::None,
+    }
+}
+
+/// Handles input during an active typing session.
 ///
-/// The new mode is created, initialized with the current config,
-/// and swapped into the `app` instance.
-fn switch_mode(app: &mut App, mode: &Mode, config: &Config) {
-    let mut new_mode = create_mode(mode);
-    new_mode.initialize(config);
-    app.mode = new_mode;
+/// **Globally handled keys:**
+/// - `ESC`: Quit the application.
+/// - `TAB`: Reset the mode and return to Home.
+///
+/// **Delegated to game mode:** All other keys (typing, backspace, etc.).
+fn handle_running_input(app: &mut App, key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Esc => Action::Quit,
+        KeyCode::Tab => {
+            app.mode.reset();
+            app.focused_option = 0;
+            app.is_editing = false;
+            Action::SwitchState(State::Home)
+        }
+        _ => {
+            let action = app.mode.handle_input(key);
+
+            // Check for completion after input
+            if app.mode.is_complete() {
+                app.mode.on_complete();
+                Action::SwitchState(State::Complete)
+            } else {
+                action
+            }
+        }
+    }
+}
+
+/// Handles input on the completion screen (restart or quit only).
+fn handle_complete_input(app: &mut App, key: KeyEvent) -> Action {
+    match key.code {
+        KeyCode::Esc => Action::Quit,
+        KeyCode::Tab => {
+            app.mode.reset();
+            app.focused_option = 0;
+            app.is_editing = false;
+            Action::SwitchState(State::Home)
+        }
+        _ => Action::None,
+    }
+}
+
+/// Executes the given action, updating application state accordingly.
+fn execute_action(app: &mut App, action: Action, config: &Config) {
+    match action {
+        Action::None => {}
+        Action::SwitchMode(mode) => {
+            app.mode_config = mode.clone();
+            let mut new_mode = create_mode(&mode);
+            new_mode.initialize(config);
+            app.mode = new_mode;
+            app.focused_option = 0;
+            app.is_editing = false;
+            app.editing_mode = None;
+        }
+        Action::SwitchState(state) => app.state = state,
+        Action::Quit => app.should_exit = true,
+    }
 }

@@ -15,19 +15,11 @@ pub struct Config {
 }
 
 /// Default settings for typing tests.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Defaults {
     #[serde(flatten)]
     #[serde(default)]
     pub mode: Mode,
-}
-
-impl Default for Defaults {
-    fn default() -> Self {
-        Defaults {
-            mode: Mode::default(),
-        }
-    }
 }
 
 #[cfg(test)]
