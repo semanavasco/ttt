@@ -176,7 +176,9 @@ fn render_options_bar(area: Rect, buf: &mut Buffer, app: &App) {
     };
 
     spans.push(Span::styled(capitalize(mode_name), mode_style));
-    spans.push(Span::from(" | "));
+    if app.mode.option_count() > 0 {
+        spans.push(Span::from(" | "));
+    }
 
     // We pass None when mode selector is focused, otherwise pass the mode option index
     let focused_mode_option = if app.focused_option == 0 {
