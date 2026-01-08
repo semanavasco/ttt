@@ -2,180 +2,238 @@
 //!
 //! This module defines the traits and types for the different test modes.
 //!
-//! It utilizes a trait-based system where each mode must implement both
-//! logic handling ([`Handler`]) and visual rendering ([`Renderer`]). These are
-//! unified under the [`GameMode`] trait object used by the main application.
+//! Game modes provide data to the global renderer and handle mode-specific input.
+//! Global controls (ESC, TAB, arrows, ...) are handled by the application layer
+//! and thus not delegated to the mode.
+//!
+//! Check [crate::app::events] for more details.
 
 pub mod clock;
 pub mod util;
 pub mod words;
+pub mod zen;
 
 use std::time::Duration;
 
+use clap::Subcommand;
 use crossterm::event::KeyEvent;
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    text::{Line, Span},
-    widgets::{Paragraph, Widget},
-};
 use serde::{Deserialize, Serialize};
+use strum::{Display, EnumIter, VariantNames};
 
 use crate::{
     app::{
-        State,
         events::Action,
-        modes::{clock::Clock, words::Words},
-        ui::SELECTED_STYLE,
+        modes::{clock::Clock, words::Words, zen::Zen},
+        ui::StyledChar,
     },
     config::Config,
 };
 
-/// A list of mode identifiers used for configuration and CLI parsing.
-pub const AVAILABLE_MODES: &[&str] = &["clock", "words"];
-
-/// Factory function to create a new boxed [`GameMode`] based on a [`Mode`]
-/// configuration.
+/// Factory function to create a new boxed [`GameMode`] based on a [`Mode`] configuration.
 pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
     match mode {
-        Mode::Clock { duration } => Box::new(Clock::new(*duration)),
-        Mode::Words { count } => Box::new(Words::new(*count)),
+        Mode::Clock { duration, text } => {
+            Box::new(Clock::new(Duration::from_secs(*duration), text))
+        }
+        Mode::Words { count, text } => Box::new(Words::new(*count, text)),
+        Mode::Zen => Box::new(Zen::new()),
     }
 }
 
 /// Configuration and serialized representation of [`GameMode`]s.
 ///
-/// This enum defines the specific parameters for each mode (e.g., time limits or word counts).
-/// It serves two primary roles:
-/// 1. **In-memory State**: Determines which mode logic the [`App`][crate::app::App] should instantiate.
-/// 2. **Configuration**: Defines the schema for the application's config file via Serde.
+/// This enum serves three roles:
+/// 1. **CLI Subcommands**: Via `clap::Subcommand`, each variant becomes a CLI subcommand
+///    with its fields as arguments (e.g., `ttt clock -d 60 -t english`).
+/// 2. **Configuration Schema**: Via `serde`, defines the structure for `config.toml`.
+/// 3. **Mode Factory Input**: Used by [`create_mode`] to instantiate the appropriate [`GameMode`].
 ///
-/// # Serialization
-/// Uses an internally tagged representation (`tag = "mode"`).
+/// # Config File Example
 ///
-/// ## Example:
 /// ```toml
 /// [defaults]
 /// mode = "clock"
+/// text = "english"
 /// duration = 30
 /// ```
-#[derive(Serialize, Deserialize, Clone)]
+///
+/// # CLI Usage
+///
+/// ```bash
+/// ttt clock -d 60 -t spanish
+/// ttt words -c 100
+/// ```
+#[derive(Serialize, Deserialize, Subcommand, Display, EnumIter, VariantNames, Clone)]
+#[strum(serialize_all = "lowercase")]
 #[serde(tag = "mode", rename_all = "lowercase")]
 pub enum Mode {
+    /// Timer-based game mode.
     Clock {
-        #[serde(default = "default_clock_duration", with = "duration_as_secs")]
-        duration: Duration,
+        /// The text to use for the typing test.
+        #[arg(short, long, default_value_t = default_text())]
+        #[serde(default = "default_text")]
+        text: String,
+
+        /// The duration of the typing test.
+        #[arg(short, long, default_value_t = default_clock_duration())]
+        #[serde(default = "default_clock_duration")]
+        duration: u64,
     },
 
+    /// Word-count-based game mode.
     Words {
+        /// The text to use for the typing test.
+        #[arg(short, long, default_value_t = default_text())]
+        #[serde(default = "default_text")]
+        text: String,
+
+        /// The amount of words to type.
+        #[arg(short, long, default_value_t = default_words_count())]
         #[serde(default = "default_words_count")]
         count: usize,
     },
+
+    /// Free-typing mode with no target text.
+    Zen,
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Clock {
+            duration: default_clock_duration(),
+            text: default_text(),
+        }
+    }
 }
 
 impl Mode {
-    pub fn from_string(mode: &str) -> Option<Self> {
-        match mode {
-            "clock" => Some(Mode::Clock {
+    /// Returns a default Mode for a given mode name string.
+    pub fn default_for(name: &str) -> Self {
+        match name {
+            "clock" => Mode::Clock {
                 duration: default_clock_duration(),
-            }),
-            "words" => Some(Mode::Words {
+                text: default_text(),
+            },
+            "words" => Mode::Words {
                 count: default_words_count(),
-            }),
-            _ => None,
+                text: default_text(),
+            },
+            "zen" => Mode::Zen,
+            _ => Mode::default(),
         }
     }
+
+    /// Returns the mode name as a string.
+    pub fn name(&self) -> &'static str {
+        match self {
+            Mode::Clock { .. } => "clock",
+            Mode::Words { .. } => "words",
+            Mode::Zen => "zen",
+        }
+    }
+}
+
+pub fn default_clock_duration() -> u64 {
+    30
+}
+
+pub fn default_words_count() -> usize {
+    50
+}
+
+pub fn default_text() -> String {
+    "english".to_string()
+}
+
+/// Represents a selectable option in the options bar.
+pub struct OptionItem {
+    pub label: String,
+    pub is_active: bool,
+    pub is_focused: bool,
+    pub is_editing: bool,
+}
+
+/// Represents a group of related options.
+pub struct OptionGroup {
+    pub items: Vec<OptionItem>,
+}
+
+/// Direction for option adjustment.
+#[derive(Clone, Copy)]
+pub enum Direction {
+    Left,
+    Right,
 }
 
 /// Logic handler for a game mode.
 ///
-/// Responsibilities include initialization and processing user input
-/// to return application-level actions.
+/// This trait defines how a game mode manages its internal state and responds
+/// to user input. Implementations handle:
+/// - **Initialization**: Loading configuration and generating initial word sets.
+/// - **Input Processing**: Handling typing, backspace, and mode-specific shortcuts.
+/// - **Lifecycle**: Tracking completion conditions and reset behavior.
+///
+/// Global controls (ESC, TAB, arrow navigation) are handled by the application
+/// layer before input reaches the mode.
 pub trait Handler {
     /// Performs one-time setup using the application's configuration.
     fn initialize(&mut self, config: &Config);
 
-    /// Processes keyboard input specific to the current mode.
-    ///
-    /// Returns an [`Action`] if the mode needs to trigger a global state change
-    /// (e.g., exiting to the menu or finishing the test).
+    /// Processes mode-specific keyboard input (typing, backspace, etc.).
+    /// Global keys (ESC, TAB, arrows, ...) are handled before this is called.
     fn handle_input(&mut self, key: KeyEvent) -> Action;
+
+    /// Resets the mode to initial state.
+    fn reset(&mut self);
+
+    /// Returns true if the mode has completed (e.g., timer expired, all words typed).
+    fn is_complete(&self) -> bool;
+
+    /// Called when transitioning to Complete state.
+    fn on_complete(&mut self) {}
 }
 
-/// Rendering engine for a game mode.
+/// Data provider for the global renderer.
 ///
-/// This trait uses a "Template Method" pattern. The `render_body` and `render_footer`
-/// methods provide a default dispatch mechanism that calls specific methods based
-/// on the current [`State`].
+/// This trait defines how a game mode exposes its state for rendering.
+/// Modes provide **data only** (options, progress, characters, stats);
+/// the global renderer in [`ui`](super::ui) handles layout and styling.
 pub trait Renderer {
-    /// Dispatches rendering of the main content based on the current application [`State`].
-    fn render_body(&self, area: Rect, buf: &mut Buffer, state: &State) {
-        match state {
-            State::Home => self.render_home_body(area, buf),
-            State::Running => self.render_running_body(area, buf),
-            State::Complete => self.render_complete_body(area, buf),
-        }
-    }
+    /// Mode-specific options to display after the mode selector.
+    /// `focused_index` is None when mode selector is focused.
+    fn get_options(&self, focused_index: Option<usize>) -> OptionGroup;
 
-    /// Renders the body for the [`State::Home`] screen.
-    fn render_home_body(&self, area: Rect, buf: &mut Buffer);
+    /// Handle option selection (Enter/Space on a mode-specific option).
+    fn select_option(&mut self, index: usize);
 
-    /// Renders the body for the [`State::Running`] screen.
-    fn render_running_body(&self, area: Rect, buf: &mut Buffer);
+    /// Handle option value change while editing (arrows in edit mode).
+    fn adjust_option(&mut self, index: usize, direction: Direction);
 
-    /// Renders the body for the [`State::Complete`] screen.
-    fn render_complete_body(&self, area: Rect, buf: &mut Buffer);
+    /// Returns true if any mode option is currently being edited.
+    fn is_option_editing(&self) -> bool;
 
-    /// Dispatches rendering of the footer based on the current application [`State`].
-    fn render_footer(&self, area: Rect, buf: &mut Buffer, state: &State) {
-        match state {
-            State::Home => self.render_home_footer(area, buf),
-            State::Running => self.render_running_footer(area, buf),
-            State::Complete => self.render_complete_footer(area, buf),
-        }
-    }
+    /// Number of mode-specific options (for navigation bounds).
+    fn option_count(&self) -> usize;
 
-    /// Renders the footer for the [`State::Home`] screen.
-    fn render_home_footer(&self, area: Rect, buf: &mut Buffer) {
-        let text = vec![
-            Span::from(" Quit "),
-            Span::from("(ESC)").style(SELECTED_STYLE),
-            Span::from(" | Navigate Options "),
-            Span::from("(<- | ->)").style(SELECTED_STYLE),
-            Span::from(" | Select "),
-            Span::from("(ENTER/SPACE)").style(SELECTED_STYLE),
-            Span::from(" | Press any key to start your typing session... "),
-        ];
-        Paragraph::new(Line::from(text)).render(area, buf);
-    }
+    /// Progress text to display (e.g., "45" for timer, "23/50" for word count).
+    fn get_progress(&self) -> String;
 
-    /// Renders the footer for the [`State::Running`] screen.
-    fn render_running_footer(&self, area: Rect, buf: &mut Buffer) {
-        let text = vec![
-            Span::from(" Restart "),
-            Span::from("(TAB)").style(SELECTED_STYLE),
-            Span::from(" | Quit "),
-            Span::from("(ESC)").style(SELECTED_STYLE),
-        ];
-        Paragraph::new(Line::from(text)).render(area, buf);
-    }
+    /// Characters to display with their semantic states.
+    fn get_characters(&self) -> Vec<StyledChar>;
 
-    /// Renders the footer for the [`State::Complete`] screen.
-    fn render_complete_footer(&self, area: Rect, buf: &mut Buffer) {
-        let text = vec![
-            Span::from(" Restart "),
-            Span::from("(TAB)").style(SELECTED_STYLE),
-            Span::from(" | Quit "),
-            Span::from("(ESC)").style(SELECTED_STYLE),
-        ];
-        Paragraph::new(Line::from(text)).render(area, buf);
+    /// Statistics for the completion screen.
+    fn get_stats(&self) -> GameStats;
+
+    /// WPM data points for the chart: (time_seconds, wpm).
+    fn get_wpm_data(&self) -> Vec<(f64, f64)>;
+
+    /// Optional mode-specific key hints for the footer.
+    fn footer_hints(&self) -> Vec<(&'static str, &'static str)> {
+        vec![]
     }
 }
 
 /// A marker trait combining [`Handler`] and [`Renderer`].
-///
-/// Any type implementing both traits automatically implements `GameMode`,
-/// allowing it to be used as a trait object within the main [`App`][crate::app::App].
 pub trait GameMode: Handler + Renderer {}
 impl<T: Handler + Renderer> GameMode for T {}
 
@@ -190,7 +248,6 @@ pub struct GameStats {
 }
 
 impl GameStats {
-    /// Creates a new statistics container.
     pub fn new(wpm: f64, accuracy: f64, duration: f64) -> Self {
         Self {
             wpm,
@@ -199,27 +256,19 @@ impl GameStats {
         }
     }
 
-    /// Returns the average Words Per Minute achieved.
     pub fn wpm(&self) -> f64 {
         self.wpm
     }
 
-    /// Returns the accuracy percentage (0.0 to 100.0).
     pub fn accuracy(&self) -> f64 {
         self.accuracy
     }
 
-    /// Returns the total duration of the test in seconds.
     pub fn duration(&self) -> f64 {
         self.duration
     }
 
     /// Calculates statistics based on the test results.
-    ///
-    /// # Arguments
-    /// * `duration` - The total time elapsed.
-    /// * `typed_words` - The list of words typed by the user.
-    /// * `target_words` - The list of expected words.
     pub fn calculate(duration: Duration, typed_words: &[String], target_words: &[String]) -> Self {
         let duration_mins = duration.as_secs_f64() / 60.0;
 
@@ -260,42 +309,5 @@ impl GameStats {
         let wpm = gross_wpm * (accuracy / 100.0);
 
         Self::new(wpm, accuracy, duration.as_secs_f64())
-    }
-}
-
-impl Default for Mode {
-    fn default() -> Self {
-        Mode::Clock {
-            duration: default_clock_duration(),
-        }
-    }
-}
-
-pub fn default_clock_duration() -> Duration {
-    Duration::from_secs(30)
-}
-
-pub fn default_words_count() -> usize {
-    50
-}
-
-/// [`Duration`] serializer as a simple integer representing seconds for serde.
-mod duration_as_secs {
-    use serde::{self, Deserialize, Deserializer, Serializer};
-    use std::time::Duration;
-
-    pub fn serialize<S>(duration: &Duration, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_u64(duration.as_secs())
-    }
-
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let seconds = u64::deserialize(deserializer)?;
-        Ok(Duration::from_secs(seconds))
     }
 }

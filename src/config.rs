@@ -15,32 +15,16 @@ pub struct Config {
 }
 
 /// Default settings for typing tests.
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Default)]
 pub struct Defaults {
-    #[serde(default = "default_text")]
-    pub text: String,
-
     #[serde(flatten)]
     #[serde(default)]
     pub mode: Mode,
 }
 
-impl Default for Defaults {
-    fn default() -> Self {
-        Defaults {
-            text: default_text(),
-            mode: Mode::default(),
-        }
-    }
-}
-
-pub fn default_text() -> String {
-    "lorem".to_string()
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::app::modes::default_clock_duration;
+    use crate::app::modes::{default_clock_duration, default_text};
 
     use super::*;
 
@@ -52,31 +36,38 @@ mod tests {
         println!("{}", config);
 
         assert!(config.contains("[defaults]"));
-        assert!(config.contains("text = \"lorem\""));
+        assert!(config.contains("text = \"english\""));
         assert!(config.contains("mode = \"clock\""));
         assert!(config.contains("duration = 30"));
     }
 
     #[test]
-    fn config_deserialize_with_defaults() {
-        // Empty config
+    fn empty_config_deserialize() {
         let toml_str = "";
         let config: Config = toml::from_str(toml_str).unwrap();
 
-        assert_eq!(config.defaults.text, "lorem");
+        #[allow(irrefutable_let_patterns)]
+        if let Mode::Clock { duration, text } = config.defaults.mode {
+            assert_eq!(duration, default_clock_duration());
+            assert_eq!(text, default_text());
+        } else {
+            panic!("Expected Clock mode");
+        }
+    }
 
-        // Partial config with count mode
+    #[test]
+    fn partial_config_deserialize() {
         let toml_str = r#"
             [defaults]
             mode = "clock"
+            duration = 30
         "#;
         let config: Config = toml::from_str(toml_str).unwrap();
 
-        assert_eq!(config.defaults.text, "lorem");
-
         #[allow(irrefutable_let_patterns)]
-        if let Mode::Clock { duration, .. } = config.defaults.mode {
-            assert_eq!(duration, default_clock_duration());
+        if let Mode::Clock { duration, text } = config.defaults.mode {
+            assert_eq!(duration, 30);
+            assert_eq!(text, default_text());
         } else {
             panic!("Expected Clock mode");
         }

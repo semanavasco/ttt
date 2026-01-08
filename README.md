@@ -18,18 +18,19 @@ cargo install --path .
 $ ttt
 A simple Terminal Typing Test utility.
 
-Usage: ttt [OPTIONS]
+Usage: ttt [OPTIONS] [COMMAND]
+
+Commands:
+  clock  Timer-based game mode
+  words  Wourd-count-based game mode
+  help   Print this message or the help of the given subcommand(s)
 
 Options:
-  -t, --text <TEXT>          The text to get the words from
-  -w, --words <WORDS>        The number of words the test includes [modes: words]
-  -m, --mode <MODE>          The game mode to use [possible values: clock, words, ...]
-  -d, --duration <DURATION>  The duration of the test [modes: clock]
-  -c, --config <CONFIG>      Read config from file
-  -s, --save-config          Save config, applies overrides provided by other arguments
-      --defaults             Use default settings
-  -h, --help                 Print help
-  -V, --version              Print version
+  -c, --config <CONFIG>  Read config from file
+  -s, --save-config      Save config, applies overrides provided by other arguments
+      --defaults         Use default settings
+  -h, --help             Print help
+  -V, --version          Print version
 ```
 
 ### Example Commands
@@ -38,14 +39,14 @@ Options:
 # Run with saved config or defaults
 $ ttt
 
-# Run with custom settings
-$ ttt --mode clock --words 50 --duration 45
+# Run clock mode with 60 second duration
+$ ttt clock -d 60
 
-# Use a specific language
-$ ttt --text spanish
+# Run words mode with 100 words using Spanish text
+$ ttt words -c 100 -t spanish
 
 # Save current settings as default
-$ ttt --words 75 --duration 60 --save-config
+$ ttt clock -d 45 -t english --save-config
 
 # Load from custom config file
 $ ttt --config ~/my-config.toml
@@ -53,14 +54,15 @@ $ ttt --config ~/my-config.toml
 
 ## Embedded Texts
 
-| Name         | Description                        |
-| ------------ | ---------------------------------- |
-| `lorem`      | 100 words of Lorem Ipsum (default) |
-| `english`    | 100 most common English words      |
-| `spanish`    | 100 most common Spanish words      |
-| `portuguese` | 100 most common Portuguese words   |
-| `german`     | 100 most common German words       |
-| `swedish`    | 100 most common Swedish words      |
+| Name         | Description                             |
+| ------------ | --------------------------------------- |
+| `english`    | 100 most common English words (default) |
+| `french`     | 100 most common French words            |
+| `german`     | 100 most common German words            |
+| `lorem`      | 100 words of Lorem Ipsum                |
+| `portuguese` | 100 most common Portuguese words        |
+| `spanish`    | 100 most common Spanish words           |
+| `swedish`    | 100 most common Swedish words           |
 
 ## Configuration
 
@@ -86,33 +88,64 @@ Custom texts can be placed at: `~/.config/ttt/texts/`
 1. Create `src/app/modes/newmode.rs` and implement `Handler` + `Renderer` traits:
 
 ```rust
-use crate::app::{State, modes::{Action, Handler, Renderer}};
+use crate::app::{
+    events::Action,
+    modes::{Direction, GameStats, Handler, OptionGroup, OptionItem, Renderer},
+    ui::StyledChar,
+};
 use crate::config::Config;
 use crossterm::event::KeyEvent;
-use ratatui::{buffer::Buffer, layout::Rect};
 
 pub struct NewMode {
     // your fields
 }
 
 impl Handler for NewMode {
-    fn initialize(&mut self, config: &Config) { /* ... */ }
+    fn initialize(&mut self, config: &Config) { /* load config, generate words */ }
 
     fn handle_input(&mut self, key: KeyEvent) -> Action {
-        // Process input and return an Action to trigger state changes
-        // e.g., Action::SwitchState(State::Running)
+        // Handle typing, backspace, mode-specific shortcuts
+        // Global keys (ESC, TAB, arrows, ...) are handled before this
         Action::None
     }
+
+    fn reset(&mut self) { /* reset to initial state */ }
+
+    fn is_complete(&self) -> bool { /* checks for game mode's completion */ }
+
+    fn on_complete(&mut self) { /* called when transitioning to State::Complete */ }
 }
 
 impl Renderer for NewMode {
-    fn render_home_body(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
-    fn render_running_body(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
-    fn render_complete_body(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
+    fn get_options(&self, focused: Option<usize>) -> OptionGroup {
+        // Return mode-specific options (e.g., duration, word count)
+        OptionGroup { items: vec![] }
+    }
 
-    // Footer methods have default implementations in Renderer trait,
-    // but you can override them:
-    // fn render_home_footer(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
+    fn select_option(&mut self, index: usize) { /* handle option selection */ }
+
+    fn adjust_option(&mut self, index: usize, direction: Direction) { /* adjust value */ }
+
+    fn is_option_editing(&self) -> bool { /* whether an option is being edited */ }
+
+    fn option_count(&self) -> usize { /* the amount of options available */ }
+
+    fn get_progress(&self) -> String { /* string representation of the test's status (e.g., 35/50 words)*/ }
+
+    fn get_characters(&self) -> Vec<StyledChar> {
+        // Return characters with semantic states (Pending, Correct, Incorrect, etc.)
+        // Global renderer applies theme colors
+        vec![]
+    }
+
+    fn get_stats(&self) -> GameStats { GameStats::new(0.0, 0.0, 0.0) }
+
+    fn get_wpm_data(&self) -> Vec<(f64, f64)> { vec![] }
+
+    fn footer_hints(&self) -> Vec<(&'static str, &'static str)> {
+        // Optional mode-specific key hints, e.g., vec![("Ctrl+H", "Clear word")]
+        vec![]
+    }
 }
 ```
 
@@ -121,32 +154,34 @@ impl Renderer for NewMode {
 ```rust
 pub mod newmode;
 
-// ...
+use crate::app::modes::newmode::NewMode;
 
-pub const AVAILABLE_MODES: &[&str] = &["clock", "words", "newmode"];
+// Add variant to Mode enum (derives Subcommand for CLI integration)
+#[derive(Serialize, Deserialize, Subcommand, Display, EnumIter, VariantNames, Clone)]
+#[serde(tag = "mode", rename_all = "lowercase")]
+pub enum Mode {
+    Clock { /* ... */ },
+    Words { /* ... */ },
+    NewMode {
+        // your mode-specific config fields
+    },
+}
 
+// Update create_mode factory
 pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
     match mode {
-        Mode::Clock { duration } => Box::new(Clock::new(*duration)),
-        Mode::Words { count } => Box::new(Words::new(*count)),
+        // ...
         Mode::NewMode { /* ... */ } => Box::new(NewMode::new(/* ... */)),
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub enum Mode {
-    Clock { /* ... */ },
-    Words { /* ... */ },
-    NewMode { /* your config */ },
-}
-
+// Update Mode::default_for helper
 impl Mode {
-    pub fn from_string(mode: &str) -> Option<Self> {
-        match mode {
-            "clock" => Some(Mode::Clock { /* ... */ }),
-            "words" => Some(Mode::Words { /* ... */ }),
-            "newmode" => Some(Mode::NewMode { /* ... */ }),
-            _ => None,
+    pub fn default_for(name: &str) -> Self {
+        match name {
+            // ...
+            "newmode" => Mode::NewMode { /* ... */ },
+            _ => Mode::default(),
         }
     }
 }
