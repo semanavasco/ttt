@@ -88,33 +88,64 @@ Custom texts can be placed at: `~/.config/ttt/texts/`
 1. Create `src/app/modes/newmode.rs` and implement `Handler` + `Renderer` traits:
 
 ```rust
-use crate::app::{State, modes::{Action, Handler, Renderer}};
+use crate::app::{
+    events::Action,
+    modes::{Direction, GameStats, Handler, OptionGroup, OptionItem, Renderer},
+    ui::StyledChar,
+};
 use crate::config::Config;
 use crossterm::event::KeyEvent;
-use ratatui::{buffer::Buffer, layout::Rect};
 
 pub struct NewMode {
     // your fields
 }
 
 impl Handler for NewMode {
-    fn initialize(&mut self, config: &Config) { /* ... */ }
+    fn initialize(&mut self, config: &Config) { /* load config, generate words */ }
 
     fn handle_input(&mut self, key: KeyEvent) -> Action {
-        // Process input and return an Action to trigger state changes
-        // e.g., Action::SwitchState(State::Running)
+        // Handle typing, backspace, mode-specific shortcuts
+        // Global keys (ESC, TAB, arrows, ...) are handled before this
         Action::None
     }
+
+    fn reset(&mut self) { /* reset to initial state */ }
+
+    fn is_complete(&self) -> bool { /* checks for game mode's completion */ }
+
+    fn on_complete(&mut self) { /* called when transitioning to State::Complete */ }
 }
 
 impl Renderer for NewMode {
-    fn render_home_body(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
-    fn render_running_body(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
-    fn render_complete_body(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
+    fn get_options(&self, focused: Option<usize>) -> OptionGroup {
+        // Return mode-specific options (e.g., duration, word count)
+        OptionGroup { items: vec![] }
+    }
 
-    // Footer methods have default implementations in Renderer trait,
-    // but you can override them:
-    // fn render_home_footer(&self, area: Rect, buf: &mut Buffer) { /* ... */ }
+    fn select_option(&mut self, index: usize) { /* handle option selection */ }
+
+    fn adjust_option(&mut self, index: usize, direction: Direction) { /* adjust value */ }
+
+    fn is_option_editing(&self) -> bool { /* whether an option is being edited */ }
+
+    fn option_count(&self) -> usize { /* the amount of options available */ }
+
+    fn get_progress(&self) -> String { /* string representation of the test's status (e.g., 35/50 words)*/ }
+
+    fn get_characters(&self) -> Vec<StyledChar> {
+        // Return characters with semantic states (Pending, Correct, Incorrect, etc.)
+        // Global renderer applies theme colors
+        vec![]
+    }
+
+    fn get_stats(&self) -> GameStats { GameStats::new(0.0, 0.0, 0.0) }
+
+    fn get_wpm_data(&self) -> Vec<(f64, f64)> { vec![] }
+
+    fn footer_hints(&self) -> Vec<(&'static str, &'static str)> {
+        // Optional mode-specific key hints, e.g., vec![("Ctrl+H", "Clear word")]
+        vec![]
+    }
 }
 ```
 
@@ -131,19 +162,16 @@ use crate::app::modes::newmode::NewMode;
 pub enum Mode {
     Clock { /* ... */ },
     Words { /* ... */ },
-
-    /// New game mode
     NewMode {
-        // your mode-specific fields with defaults
+        // your mode-specific config fields
     },
 }
 
 // Update create_mode factory
 pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
     match mode {
-        Mode::Clock { duration, text } => Box::new(Clock::new(/* ... */)),
-        Mode::Words { count, text } => Box::new(Words::new(/* ... */)),
-        Mode::NewMode { text, /* ... */ } => Box::new(NewMode::new(/* ... */)),
+        // ...
+        Mode::NewMode { /* ... */ } => Box::new(NewMode::new(/* ... */)),
     }
 }
 
@@ -151,9 +179,8 @@ pub fn create_mode(mode: &Mode) -> Box<dyn GameMode> {
 impl Mode {
     pub fn default_for(name: &str) -> Self {
         match name {
-            "clock" => Mode::Clock { /* defaults */ },
-            "words" => Mode::Words { /* defaults */ },
-            "newmode" => Mode::NewMode { /* defaults */ },
+            // ...
+            "newmode" => Mode::NewMode { /* ... */ },
             _ => Mode::default(),
         }
     }
