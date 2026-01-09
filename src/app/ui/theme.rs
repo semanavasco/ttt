@@ -15,6 +15,9 @@ pub struct Theme {
     #[serde(with = "serde_style")]
     pub border_style: Style,
 
+    #[serde(with = "serde_color")]
+    pub background: Color,
+
     #[serde(with = "serde_style")]
     pub default: Style,
     #[serde(with = "serde_style")]
@@ -40,6 +43,7 @@ impl Default for Theme {
         Self {
             border_style: Style::default(),
             border_type: BorderType::Rounded,
+            background: Color::Reset,
             default: Style::default(),
             pending: Style::new().fg(Color::DarkGray),
             correct: Style::new().fg(Color::Green).add_modifier(Modifier::BOLD),
@@ -170,6 +174,22 @@ mod serde_border {
 /// [`Color`] parsing and formatting.
 mod serde_color {
     use ratatui::style::Color;
+    use serde::{Deserialize, Deserializer, Serializer};
+
+    pub fn serialize<S>(color: &Color, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&to_string(*color))
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Color, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        parse(&s).ok_or_else(|| serde::de::Error::custom(format!("Invalid color: {}", s)))
+    }
 
     pub fn to_string(color: Color) -> String {
         match color {
@@ -334,5 +354,15 @@ mod tests {
         "#;
         let theme: Theme = toml::from_str(toml_str).expect("Failed to deserialize border type");
         assert_eq!(theme.border_type, ratatui::widgets::BorderType::Double);
+    }
+
+    #[test]
+    fn test_background_color() {
+        let toml_str = r#"
+            background = "blue"
+        "#;
+        let theme: Theme =
+            toml::from_str(toml_str).expect("Failed to deserialize background color");
+        assert_eq!(theme.background, Color::Blue);
     }
 }

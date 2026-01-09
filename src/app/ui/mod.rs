@@ -9,7 +9,7 @@ use ratatui::{
     Frame,
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Modifier, Stylize},
+    style::{Modifier, Style, Stylize},
     symbols,
     text::{Line, Span},
     widgets::{
@@ -55,6 +55,10 @@ impl StyledChar {
 /// Game mode data is retrieved via the [`Renderer`](super::modes::Renderer) trait
 /// and styled using the application's [`Theme`](super::Theme).
 pub fn draw(frame: &mut Frame, app: &App) {
+    // Set global background
+    let bg_block = Block::default().style(Style::default().bg(app.theme.background));
+    frame.render_widget(bg_block, frame.area());
+
     let layout = Layout::vertical([Constraint::Min(10), Constraint::Length(3)]).split(frame.area());
 
     let body_block = Block::new()
