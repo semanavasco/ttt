@@ -137,7 +137,7 @@ impl Renderer for Zen {
         let mut chars: Vec<StyledChar> = self
             .typed_chars
             .iter()
-            .map(|&c| StyledChar::new(c, CharState::Correct))
+            .map(|&c| StyledChar::new(c, CharState::Default))
             .collect();
 
         // Add cursor at the end

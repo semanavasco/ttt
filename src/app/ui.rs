@@ -10,10 +10,13 @@ use ratatui::{
     style::{Color, Modifier, Style, Stylize},
     symbols,
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Padding, Paragraph, Widget, Wrap},
+    widgets::{
+        Axis, Block, BorderType, Borders, Chart, Dataset, GraphType, Padding, Paragraph, Widget,
+        Wrap,
+    },
 };
 
-use crate::app::{App, State, modes::util::render_wpm_chart};
+use crate::app::{App, State};
 
 /// State of a character in the typing area.
 #[derive(Clone, Copy, PartialEq, Default)]
@@ -25,6 +28,7 @@ pub enum CharState {
     Skipped,
     Cursor,
     Extra,
+    Default,
 }
 
 /// A single character and its state.
@@ -51,6 +55,7 @@ pub struct Theme {
     pub extra: Style,
     pub selected: Style,
     pub editing: Style,
+    pub default: Style,
 }
 
 impl Default for Theme {
@@ -73,6 +78,7 @@ impl Default for Theme {
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::UNDERLINED),
+            default: Style::default(),
         }
     }
 }
@@ -87,6 +93,7 @@ impl Theme {
             CharState::Skipped => self.skipped,
             CharState::Cursor => self.cursor,
             CharState::Extra => self.extra,
+            CharState::Default => self.default,
         }
     }
 }
@@ -196,12 +203,12 @@ fn render_options_bar(area: Rect, buf: &mut Buffer, app: &App) {
             if item.is_active {
                 app.theme.selected.add_modifier(Modifier::UNDERLINED)
             } else {
-                Style::default().add_modifier(Modifier::UNDERLINED)
+                app.theme.default.add_modifier(Modifier::UNDERLINED)
             }
         } else if item.is_active {
             app.theme.selected
         } else {
-            Style::default()
+            app.theme.default
         };
 
         spans.push(Span::styled(&item.label, style));
@@ -272,7 +279,45 @@ fn render_complete_body(area: Rect, buf: &mut Buffer, app: &App) {
     // WPM Chart
     let data = app.mode.get_wpm_data();
     let max_wpm = data.iter().map(|(_, wpm)| *wpm).fold(0.0, f64::max);
-    render_wpm_chart(layout[1], buf, &data, stats.duration(), max_wpm);
+
+    let y_max = max_wpm.max(10.0);
+    let x_max = stats.duration().max(1.0);
+
+    let x_labels = [
+        "0.0".to_string(),
+        format!("{:.1}", x_max / 2.0),
+        format!("{:.1}", x_max),
+    ];
+
+    let x_axis = Axis::default()
+        .title("Time".red())
+        .style(app.theme.default)
+        .bounds([0.0, x_max])
+        .labels(x_labels);
+
+    let y_labels = [
+        "0.0".to_string(),
+        format!("{:.1}", y_max / 2.0),
+        format!("{:.1}", y_max),
+    ];
+
+    let y_axis = Axis::default()
+        .title("WPM".red())
+        .style(app.theme.default)
+        .bounds([0.0, y_max])
+        .labels(y_labels);
+
+    let dataset = Dataset::default()
+        .name("WPM")
+        .marker(symbols::Marker::Braille)
+        .graph_type(GraphType::Line)
+        .style(app.theme.selected)
+        .data(&data);
+
+    Chart::new(vec![dataset])
+        .x_axis(x_axis)
+        .y_axis(y_axis)
+        .render(layout[1], buf);
 }
 
 /// Renders key hints (global + mode-specific) in the footer.

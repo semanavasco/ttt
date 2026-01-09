@@ -2,14 +2,6 @@
 //!
 //! This module provides shared helper functions used by various game modes.
 
-use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::{Style, Stylize},
-    symbols,
-    widgets::{Axis, Chart, Dataset, GraphType, Widget},
-};
-
 use crate::app::ui::{CharState, StyledChar};
 
 /// Builds styled characters from target and typed words.
@@ -83,52 +75,4 @@ pub fn build_styled_chars(target_words: &[String], typed_words: &[String]) -> Ve
     }
 
     chars
-}
-
-/// Renders a line chart displaying WPM over time.
-pub fn render_wpm_chart(
-    area: Rect,
-    buf: &mut Buffer,
-    data: &[(f64, f64)],
-    duration: f64,
-    max_wpm: f64,
-) {
-    let y_max = max_wpm.max(10.0);
-    let x_max = duration.max(1.0);
-
-    let x_labels = [
-        "0.0".to_string(),
-        format!("{:.1}", x_max / 2.0),
-        format!("{:.1}", x_max),
-    ];
-
-    let x_axis = Axis::default()
-        .title("Time".red())
-        .style(Style::default().white())
-        .bounds([0.0, x_max])
-        .labels(x_labels);
-
-    let y_labels = [
-        "0.0".to_string(),
-        format!("{:.1}", y_max / 2.0),
-        format!("{:.1}", y_max),
-    ];
-
-    let y_axis = Axis::default()
-        .title("WPM".red())
-        .style(Style::default().white())
-        .bounds([0.0, y_max])
-        .labels(y_labels);
-
-    let dataset = Dataset::default()
-        .name("WPM")
-        .marker(symbols::Marker::Braille)
-        .graph_type(GraphType::Line)
-        .style(Style::default().magenta())
-        .data(data);
-
-    Chart::new(vec![dataset])
-        .x_axis(x_axis)
-        .y_axis(y_axis)
-        .render(area, buf);
 }
