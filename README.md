@@ -138,7 +138,7 @@ cursor = "bg:#f5bde6 fg:#24273a"
 use crate::app::{
     events::Action,
     modes::{Direction, GameStats, Handler, OptionGroup, OptionItem, Renderer},
-    ui::StyledChar,
+    ui::char::StyledChar,
 };
 use crate::config::Config;
 use crossterm::event::KeyEvent;

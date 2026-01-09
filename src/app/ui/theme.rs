@@ -1,3 +1,8 @@
+//! # Theme Module
+//!
+//! This module defines the application's theming system, allowing for
+//! customizable colors and styles across the UI.
+
 use ratatui::{
     style::{Color, Modifier, Style},
     widgets::BorderType,

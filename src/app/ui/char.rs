@@ -1,3 +1,8 @@
+//! # Character Module
+//!
+//! This module defines the core data structures for representing styled
+//! characters and their states in the typing area.
+
 /// State of a character in the typing area.
 #[derive(Clone, Copy, PartialEq, Default)]
 pub enum CharState {
