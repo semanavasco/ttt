@@ -81,6 +81,52 @@ _CLI arguments override config file settings._
 
 Custom texts can be placed at: `~/.config/ttt/texts/`
 
+## Theming
+
+You can customize the look of the application by adding a `[theme]` section to your `config.toml`.
+
+### Style Syntax
+
+Styles are defined as strings containing space-separated properties:
+
+- **Foreground:** `fg:<color>` (e.g., `fg:red`, `fg:#ff0000`)
+- **Background:** `bg:<color>` (e.g., `bg:blue`)
+- **Underline Color:** `ul:<color>` (e.g., `ul:green`)
+- **Modifiers:** `bold`, `italic`, `underlined`, `dim`, `reversed`, `hidden`, `crossed_out`
+
+**Colors** can be specified as:
+
+- **Named:** `black`, `red`, `green`, `yellow`, `blue`, `magenta`, `cyan`, `gray`, `dark_gray`, `white`, and their `light_` variants.
+- **Hex:** `#RRGGBB`
+- **Indexed:** `0`-`255` (ANSI color codes)
+
+### Available Keys
+
+| Key            | Description                                          | Default                          |
+| -------------- | ---------------------------------------------------- | -------------------------------- |
+| `border_type`  | Border style (`plain`, `rounded`, `double`, `thick`) | `rounded`                        |
+| `border_style` | Style of the window borders                          | `reset`                          |
+| `default`      | Default text style                                   | `reset`                          |
+| `pending`      | Future text to be typed                              | `fg:dark_gray`                   |
+| `correct`      | Correctly typed text                                 | `fg:green bold`                  |
+| `incorrect`    | Incorrectly typed text                               | `fg:red bold underlined`         |
+| `skipped`      | Text skipped by backspacing too far or errors        | `fg:dark_gray underlined ul:red` |
+| `cursor`       | The current character under the cursor               | `bg:white fg:dark_gray`          |
+| `extra`        | Extra characters typed (errors)                      | `fg:red bold`                    |
+| `selected`     | Selected option in menus                             | `fg:magenta bold`                |
+| `editing`      | Option currently being edited                        | `fg:yellow bold underlined`      |
+
+### Example Theme
+
+```toml
+[theme]
+border_type = "double"
+pending = "fg:gray"
+correct = "fg:#a6da95"
+incorrect = "fg:#ed8796 bold"
+cursor = "bg:#f5bde6 fg:#24273a"
+```
+
 ## Contributing
 
 ### Adding a New Game Mode
