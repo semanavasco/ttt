@@ -38,9 +38,9 @@ pub struct Theme {
     #[serde(with = "serde_style")]
     pub extra: Style,
     #[serde(with = "serde_style")]
-    pub selected: Style,
+    pub highlighted: Style,
     #[serde(with = "serde_style")]
-    pub editing: Style,
+    pub selected: Style,
 }
 
 impl Default for Theme {
@@ -62,8 +62,8 @@ impl Default for Theme {
                 .underline_color(Color::Red),
             extra: Style::new().fg(Color::Red).add_modifier(Modifier::BOLD),
             cursor: Style::new().bg(Color::White).fg(Color::DarkGray),
-            selected: Style::new().fg(Color::Magenta).add_modifier(Modifier::BOLD),
-            editing: Style::new()
+            highlighted: Style::new().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+            selected: Style::new()
                 .fg(Color::Yellow)
                 .add_modifier(Modifier::BOLD)
                 .add_modifier(Modifier::UNDERLINED),

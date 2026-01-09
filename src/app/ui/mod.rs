@@ -116,11 +116,11 @@ fn render_options_bar(area: Rect, buf: &mut Buffer, app: &App) {
         .unwrap_or_else(|| app.current_mode_name());
 
     let mode_style = if app.is_editing && app.focused_option == 0 {
-        app.theme.editing
-    } else if app.focused_option == 0 {
-        app.theme.selected.add_modifier(Modifier::UNDERLINED)
-    } else {
         app.theme.selected
+    } else if app.focused_option == 0 {
+        app.theme.highlighted.add_modifier(Modifier::UNDERLINED)
+    } else {
+        app.theme.highlighted
     };
 
     spans.push(Span::styled(capitalize(mode_name), mode_style));
@@ -139,15 +139,15 @@ fn render_options_bar(area: Rect, buf: &mut Buffer, app: &App) {
 
     for (i, item) in options.items.iter().enumerate() {
         let style = if item.is_editing {
-            app.theme.editing
+            app.theme.selected
         } else if item.is_focused {
             if item.is_active {
-                app.theme.selected.add_modifier(Modifier::UNDERLINED)
+                app.theme.highlighted.add_modifier(Modifier::UNDERLINED)
             } else {
                 app.theme.default.add_modifier(Modifier::UNDERLINED)
             }
         } else if item.is_active {
-            app.theme.selected
+            app.theme.highlighted
         } else {
             app.theme.default
         };
@@ -168,7 +168,7 @@ fn render_options_bar(area: Rect, buf: &mut Buffer, app: &App) {
 fn render_progress(area: Rect, buf: &mut Buffer, app: &App) {
     let progress = app.mode.get_progress();
     Paragraph::new(progress)
-        .style(app.theme.selected)
+        .style(app.theme.highlighted)
         .render(area, buf);
 }
 
@@ -252,7 +252,7 @@ fn render_complete_body(area: Rect, buf: &mut Buffer, app: &App) {
         .name("WPM")
         .marker(symbols::Marker::Braille)
         .graph_type(GraphType::Line)
-        .style(app.theme.selected)
+        .style(app.theme.highlighted)
         .data(&data);
 
     Chart::new(vec![dataset])
@@ -283,7 +283,7 @@ fn render_footer(area: Rect, buf: &mut Buffer, app: &App) {
         .flat_map(|(key, desc)| {
             vec![
                 Span::from(format!(" {} ", desc)),
-                Span::styled(format!("({})", key), app.theme.selected),
+                Span::styled(format!("({})", key), app.theme.highlighted),
             ]
         })
         .collect();
