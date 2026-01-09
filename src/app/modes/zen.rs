@@ -4,8 +4,9 @@ use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
     app::{
+        State,
         events::Action,
-        modes::{Direction, GameStats, Handler, OptionGroup, Renderer},
+        modes::{Direction, FooterHint, GameStats, Handler, OptionGroup, Renderer},
         ui::{CharState, StyledChar},
     },
     config::Config,
@@ -186,7 +187,7 @@ impl Renderer for Zen {
         data
     }
 
-    fn footer_hints(&self) -> Vec<(&'static str, &'static str)> {
-        vec![("ENTER", "Finish")]
+    fn footer_hints(&self) -> Vec<FooterHint> {
+        vec![FooterHint::new("ENTER", "Finish", State::Running)]
     }
 }

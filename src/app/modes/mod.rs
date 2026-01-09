@@ -22,6 +22,7 @@ use strum::{Display, EnumIter, VariantNames};
 
 use crate::{
     app::{
+        State,
         events::Action,
         modes::{clock::Clock, words::Words, zen::Zen},
         ui::StyledChar,
@@ -165,6 +166,23 @@ pub enum Direction {
     Right,
 }
 
+/// Hint for footer keybinds display.
+pub struct FooterHint {
+    pub key: &'static str,
+    pub description: &'static str,
+    pub state: State,
+}
+
+impl FooterHint {
+    pub fn new(key: &'static str, description: &'static str, state: State) -> Self {
+        FooterHint {
+            key,
+            description,
+            state,
+        }
+    }
+}
+
 /// Logic handler for a game mode.
 ///
 /// This trait defines how a game mode manages its internal state and responds
@@ -228,7 +246,7 @@ pub trait Renderer {
     fn get_wpm_data(&self) -> Vec<(f64, f64)>;
 
     /// Optional mode-specific key hints for the footer.
-    fn footer_hints(&self) -> Vec<(&'static str, &'static str)> {
+    fn footer_hints(&self) -> Vec<FooterHint> {
         vec![]
     }
 }

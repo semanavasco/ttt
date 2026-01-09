@@ -283,7 +283,14 @@ fn render_footer(area: Rect, buf: &mut Buffer, app: &App) {
     };
 
     // Add mode-specific hints
-    hints.extend(app.mode.footer_hints());
+    hints.extend(
+        app.mode
+            .footer_hints()
+            .iter()
+            .filter(|hint| hint.state == app.state)
+            .map(|hint| (hint.key, hint.description))
+            .collect::<Vec<(&str, &str)>>(),
+    );
 
     let spans: Vec<Span> = hints
         .iter()
