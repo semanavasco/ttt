@@ -14,7 +14,7 @@ use strum::VariantNames;
 
 use crate::{
     app::modes::{Direction, GameMode, Mode, create_mode},
-    app::ui::Theme,
+    app::ui::theme::Theme,
     config::Config,
 };
 
@@ -62,7 +62,7 @@ impl App {
             state: State::default(),
             mode,
             mode_config,
-            theme: Theme::default(),
+            theme: config.theme.clone(),
             focused_option: 0,
             is_editing: false,
             editing_mode: None,

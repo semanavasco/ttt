@@ -3,11 +3,13 @@
 //! This module is responsible for the visual representation of the application.
 //! It defines the global layout, theme/styles, and the main rendering entry point.
 
+pub mod theme;
+
 use ratatui::{
     Frame,
     buffer::Buffer,
     layout::{Constraint, Layout, Rect},
-    style::{Color, Modifier, Style, Stylize},
+    style::{Modifier, Stylize},
     symbols,
     text::{Line, Span},
     widgets::{
@@ -22,13 +24,13 @@ use crate::app::{App, State};
 #[derive(Clone, Copy, PartialEq, Default)]
 pub enum CharState {
     #[default]
+    Default,
     Pending,
     Correct,
     Incorrect,
     Skipped,
-    Cursor,
     Extra,
-    Default,
+    Cursor,
 }
 
 /// A single character and its state.
@@ -44,60 +46,6 @@ impl StyledChar {
     }
 }
 
-/// Theme configuration for consistent styling across the application.
-#[derive(Clone)]
-pub struct Theme {
-    pub pending: Style,
-    pub correct: Style,
-    pub incorrect: Style,
-    pub skipped: Style,
-    pub cursor: Style,
-    pub extra: Style,
-    pub selected: Style,
-    pub editing: Style,
-    pub default: Style,
-}
-
-impl Default for Theme {
-    fn default() -> Self {
-        Self {
-            pending: Style::new().fg(Color::DarkGray),
-            correct: Style::new().fg(Color::Green).add_modifier(Modifier::BOLD),
-            incorrect: Style::new()
-                .fg(Color::Red)
-                .add_modifier(Modifier::BOLD)
-                .add_modifier(Modifier::UNDERLINED),
-            skipped: Style::new()
-                .fg(Color::DarkGray)
-                .add_modifier(Modifier::UNDERLINED)
-                .underline_color(Color::Red),
-            cursor: Style::new().bg(Color::White).fg(Color::DarkGray),
-            extra: Style::new().fg(Color::Red).add_modifier(Modifier::BOLD),
-            selected: Style::new().fg(Color::Magenta).add_modifier(Modifier::BOLD),
-            editing: Style::new()
-                .fg(Color::Yellow)
-                .add_modifier(Modifier::BOLD)
-                .add_modifier(Modifier::UNDERLINED),
-            default: Style::default(),
-        }
-    }
-}
-
-impl Theme {
-    /// Convert a CharState to its corresponding Style.
-    pub fn style_for(&self, state: CharState) -> Style {
-        match state {
-            CharState::Pending => self.pending,
-            CharState::Correct => self.correct,
-            CharState::Incorrect => self.incorrect,
-            CharState::Skipped => self.skipped,
-            CharState::Cursor => self.cursor,
-            CharState::Extra => self.extra,
-            CharState::Default => self.default,
-        }
-    }
-}
-
 /// Renders the application UI with a two-section vertical layout.
 ///
 /// **Layout:**
@@ -105,25 +53,39 @@ impl Theme {
 /// - **Footer** (3 rows): Key hints for the current state + borders.
 ///
 /// Game mode data is retrieved via the [`Renderer`](super::modes::Renderer) trait
-/// and styled using the application's [`Theme`].
+/// and styled using the application's [`Theme`](super::Theme).
 pub fn draw(frame: &mut Frame, app: &App) {
     let layout = Layout::vertical([Constraint::Min(10), Constraint::Length(3)]).split(frame.area());
 
     let body_block = Block::new()
         .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
-        .border_type(BorderType::Rounded)
+        .border_type(app.theme.border_type)
+        .border_style(app.theme.border_style)
         .padding(Padding::symmetric(4, 2))
         .title(Line::from(" TTT ").centered());
 
     let body_area = body_block.inner(layout[0]);
 
+    let line_symbols = match app.theme.border_type {
+        BorderType::Plain | BorderType::Rounded => symbols::line::NORMAL,
+        BorderType::Double => symbols::line::DOUBLE,
+        BorderType::Thick => symbols::line::THICK,
+        _ => symbols::line::NORMAL,
+    };
+
     let footer_block = Block::new()
         .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
+        .border_style(app.theme.border_style)
         .border_set(symbols::border::Set {
-            top_left: symbols::line::NORMAL.vertical_right,
-            top_right: symbols::line::NORMAL.vertical_left,
-            ..symbols::border::ROUNDED
+            top_left: line_symbols.vertical_right,
+            top_right: line_symbols.vertical_left,
+            ..match app.theme.border_type {
+                BorderType::Plain => symbols::border::PLAIN,
+                BorderType::Rounded => symbols::border::ROUNDED,
+                BorderType::Thick => symbols::border::THICK,
+                BorderType::Double => symbols::border::DOUBLE,
+                _ => symbols::border::ROUNDED,
+            }
         });
 
     let footer_area = footer_block.inner(layout[1]);

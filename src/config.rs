@@ -5,13 +5,16 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::app::modes::Mode;
+use crate::app::{modes::Mode, ui::theme::Theme};
 
 /// The root configuration object.
 #[derive(Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub defaults: Defaults,
+
+    #[serde(default)]
+    pub theme: Theme,
 }
 
 /// Default settings for typing tests.
