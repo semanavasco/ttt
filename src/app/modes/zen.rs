@@ -63,7 +63,6 @@ impl Handler for Zen {
                 // Enter completes the session
                 if self.start.is_some() && !self.typed_chars.is_empty() {
                     self.end = Some(Instant::now());
-                    return Action::SwitchState(crate::app::State::Complete);
                 }
                 Action::None
             }
