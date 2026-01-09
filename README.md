@@ -106,6 +106,7 @@ Styles are defined as strings containing space-separated properties:
 | -------------- | ---------------------------------------------------- | -------------------------------- |
 | `border_type`  | Border style (`plain`, `rounded`, `double`, `thick`) | `rounded`                        |
 | `border_style` | Style of the window borders                          | `reset`                          |
+| `background`   | Global background color                              | `reset`                          |
 | `default`      | Default text style                                   | `reset`                          |
 | `pending`      | Future text to be typed                              | `fg:dark_gray`                   |
 | `correct`      | Correctly typed text                                 | `fg:green bold`                  |
