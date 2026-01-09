@@ -4,7 +4,7 @@ use ratatui::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::app::ui::CharState;
+use crate::app::ui::char::CharState;
 
 /// Theme configuration for consistent styling across the application.
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
