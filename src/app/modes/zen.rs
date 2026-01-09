@@ -7,7 +7,7 @@ use crate::{
         State,
         events::Action,
         modes::{Direction, FooterHint, GameStats, Handler, OptionGroup, Renderer},
-        ui::{CharState, StyledChar},
+        ui::char::{CharState, StyledChar},
     },
     config::Config,
 };

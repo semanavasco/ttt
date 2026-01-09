@@ -11,7 +11,7 @@ use crate::{
             Direction, GameStats, Handler, Mode, OptionGroup, OptionItem, Renderer,
             util::build_styled_chars,
         },
-        ui::StyledChar,
+        ui::char::StyledChar,
     },
     config::Config,
 };

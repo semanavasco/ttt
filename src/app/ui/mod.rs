@@ -3,6 +3,7 @@
 //! This module is responsible for the visual representation of the application.
 //! It defines the global layout, theme/styles, and the main rendering entry point.
 
+pub mod char;
 pub mod theme;
 
 use ratatui::{
@@ -19,32 +20,6 @@ use ratatui::{
 };
 
 use crate::app::{App, State};
-
-/// State of a character in the typing area.
-#[derive(Clone, Copy, PartialEq, Default)]
-pub enum CharState {
-    #[default]
-    Default,
-    Pending,
-    Correct,
-    Incorrect,
-    Skipped,
-    Extra,
-    Cursor,
-}
-
-/// A single character and its state.
-#[derive(Clone)]
-pub struct StyledChar {
-    pub char: char,
-    pub state: CharState,
-}
-
-impl StyledChar {
-    pub fn new(char: char, state: CharState) -> Self {
-        Self { char, state }
-    }
-}
 
 /// Renders the application UI with a two-section vertical layout.
 ///

@@ -2,7 +2,7 @@
 //!
 //! This module provides shared helper functions used by various game modes.
 
-use crate::app::ui::{CharState, StyledChar};
+use crate::app::ui::char::{CharState, StyledChar};
 
 /// Builds styled characters from target and typed words.
 ///

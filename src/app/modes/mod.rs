@@ -25,7 +25,7 @@ use crate::{
         State,
         events::Action,
         modes::{clock::Clock, words::Words, zen::Zen},
-        ui::StyledChar,
+        ui::char::StyledChar,
     },
     config::Config,
 };
