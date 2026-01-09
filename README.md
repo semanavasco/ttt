@@ -114,8 +114,8 @@ Styles are defined as strings containing space-separated properties:
 | `skipped`      | Text skipped by backspacing too far or errors        | `fg:dark_gray underlined ul:red` |
 | `cursor`       | The current character under the cursor               | `bg:white fg:dark_gray`          |
 | `extra`        | Extra characters typed (errors)                      | `fg:red bold`                    |
-| `selected`     | Selected option in menus                             | `fg:magenta bold`                |
-| `editing`      | Option currently being edited                        | `fg:yellow bold underlined`      |
+| `highlighted`  | Selected option in menus                             | `fg:magenta bold`                |
+| `selected`     | Option currently being edited                        | `fg:yellow bold underlined`      |
 
 ### Example Theme
 
