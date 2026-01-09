@@ -287,7 +287,7 @@ fn render_footer(area: Rect, buf: &mut Buffer, app: &App) {
         app.mode
             .footer_hints()
             .iter()
-            .filter(|hint| hint.state == app.state)
+            .filter(|hint| hint.state.contains(&app.state))
             .map(|hint| (hint.key, hint.description))
             .collect::<Vec<(&str, &str)>>(),
     );

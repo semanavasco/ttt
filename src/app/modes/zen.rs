@@ -188,6 +188,6 @@ impl Renderer for Zen {
     }
 
     fn footer_hints(&self) -> Vec<FooterHint> {
-        vec![FooterHint::new("ENTER", "Finish", State::Running)]
+        vec![FooterHint::new("ENTER", "Finish", vec![State::Running])]
     }
 }

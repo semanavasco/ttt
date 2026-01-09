@@ -170,11 +170,11 @@ pub enum Direction {
 pub struct FooterHint {
     pub key: &'static str,
     pub description: &'static str,
-    pub state: State,
+    pub state: Vec<State>,
 }
 
 impl FooterHint {
-    pub fn new(key: &'static str, description: &'static str, state: State) -> Self {
+    pub fn new(key: &'static str, description: &'static str, state: Vec<State>) -> Self {
         FooterHint {
             key,
             description,
