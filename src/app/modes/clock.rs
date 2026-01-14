@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use anyhow::{Context, Result};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rand::seq::SliceRandom;
 
@@ -50,12 +51,12 @@ impl Clock {
         }
     }
 
-    fn generate_words(&mut self) {
+    fn generate_words(&mut self) -> Result<()> {
         let bytes = Resource::get_text(&self.text)
-            .unwrap_or_else(|_| panic!("Couldn't find \"{}\" text", &self.text));
+            .context(format!("Couldn't find \"{}\" text", &self.text))?;
 
         let text: Vec<&str> = std::str::from_utf8(&bytes)
-            .expect("Text contains non-utf8 characters")
+            .context("Text contains non-utf8 characters")?
             .lines()
             .collect();
 
@@ -70,11 +71,12 @@ impl Clock {
         words.shuffle(&mut rng);
 
         self.target_words = words;
+        Ok(())
     }
 }
 
 impl Handler for Clock {
-    fn initialize(&mut self, config: &Config) {
+    fn initialize(&mut self, config: &Config) -> Result<()> {
         self.typed_words.clear();
         self.start = None;
         if let Mode::Clock { duration, text } = &config.defaults.mode {
@@ -84,7 +86,8 @@ impl Handler for Clock {
             }
             self.text = text.clone();
         }
-        self.generate_words();
+        self.generate_words()?;
+        Ok(())
     }
 
     fn handle_input(&mut self, key: KeyEvent) -> Action {
@@ -138,11 +141,12 @@ impl Handler for Clock {
         Action::None
     }
 
-    fn reset(&mut self) {
-        self.generate_words();
+    fn reset(&mut self) -> Result<()> {
+        self.generate_words()?;
         self.start = None;
         self.typed_words.clear();
         self.timestamps.clear();
+        Ok(())
     }
 
     fn is_complete(&self) -> bool {

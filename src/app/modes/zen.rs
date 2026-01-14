@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use anyhow::Result;
 use crossterm::event::{KeyCode, KeyEvent};
 
 use crate::{
@@ -50,11 +51,12 @@ impl Zen {
 }
 
 impl Handler for Zen {
-    fn initialize(&mut self, _config: &Config) {
+    fn initialize(&mut self, _config: &Config) -> Result<()> {
         self.start = None;
         self.end = None;
         self.typed_chars.clear();
         self.timestamps.clear();
+        Ok(())
     }
 
     fn handle_input(&mut self, key: KeyEvent) -> Action {
@@ -89,11 +91,12 @@ impl Handler for Zen {
         }
     }
 
-    fn reset(&mut self) {
+    fn reset(&mut self) -> Result<()> {
         self.start = None;
         self.end = None;
         self.typed_chars.clear();
         self.timestamps.clear();
+        Ok(())
     }
 
     fn is_complete(&self) -> bool {

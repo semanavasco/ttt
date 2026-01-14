@@ -15,6 +15,7 @@ pub mod zen;
 
 use std::time::Duration;
 
+use anyhow::Result;
 use clap::Subcommand;
 use crossterm::event::KeyEvent;
 use serde::{Deserialize, Serialize};
@@ -195,14 +196,14 @@ impl FooterHint {
 /// layer before input reaches the mode.
 pub trait Handler {
     /// Performs one-time setup using the application's configuration.
-    fn initialize(&mut self, config: &Config);
+    fn initialize(&mut self, config: &Config) -> Result<()>;
 
     /// Processes mode-specific keyboard input (typing, backspace, etc.).
     /// Global keys (ESC, TAB, arrows, ...) are handled before this is called.
     fn handle_input(&mut self, key: KeyEvent) -> Action;
 
     /// Resets the mode to initial state.
-    fn reset(&mut self);
+    fn reset(&mut self) -> Result<()>;
 
     /// Returns true if the mode has completed (e.g., timer expired, all words typed).
     fn is_complete(&self) -> bool;

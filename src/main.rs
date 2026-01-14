@@ -1,5 +1,6 @@
-use std::io::{self, stdout};
+use std::io::stdout;
 
+use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use crossterm::event::{
     KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
@@ -9,7 +10,7 @@ use ttt::app::{self, App};
 use ttt::cli::Args;
 use ttt::config::Config;
 
-fn main() -> io::Result<()> {
+fn main() -> Result<()> {
     let args = Args::parse();
     let config = if args.use_defaults() {
         Config::default()
@@ -18,21 +19,22 @@ fn main() -> io::Result<()> {
     };
 
     if args.should_save() {
-        let config_str = match toml::to_string(&config) {
-            Ok(config_str) => config_str,
-            Err(_) => panic!("Couldn't serialize config"),
-        };
+        let config_str = toml::to_string(&config).context("Couldn't serialize config")?;
 
-        let config_path = match args.config_dir() {
-            Some(dir) => {
-                std::fs::create_dir_all(&dir).expect("Couldn't create config directory");
-                dir.join("config.toml")
-            }
-            None => panic!("Couldn't find config directory"),
-        };
+        let config_path = args
+            .config_dir()
+            .ok_or_else(|| anyhow!("Couldn't find config directory"))?;
 
-        std::fs::write(&config_path, config_str).expect("Couldn't save config");
-        println!("Saved config to {}", config_path.display());
+        if let Some(parent) = config_path.parent() {
+            std::fs::create_dir_all(parent).context("Couldn't create config directory")?;
+        }
+
+        let config_file_path = config_path.join("config.toml");
+        std::fs::create_dir_all(&config_path).context("Couldn't create config directory")?;
+
+        std::fs::write(&config_file_path, config_str).context("Couldn't save config")?;
+
+        println!("Saved config to {}", config_file_path.display());
         std::process::exit(0);
     };
 
@@ -43,7 +45,7 @@ fn main() -> io::Result<()> {
         PushKeyboardEnhancementFlags(KeyboardEnhancementFlags::DISAMBIGUATE_ESCAPE_CODES)
     );
 
-    let mut app = App::from_config(&config);
+    let mut app = App::from_config(&config)?;
     let result = app::run(&mut terminal, &mut app, &config);
 
     let _ = execute!(stdout(), PopKeyboardEnhancementFlags);

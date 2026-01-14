@@ -7,8 +7,7 @@ pub mod events;
 pub mod modes;
 pub mod ui;
 
-use std::io;
-
+use anyhow::Result;
 use ratatui::DefaultTerminal;
 use strum::VariantNames;
 
@@ -52,12 +51,12 @@ pub enum State {
 
 impl App {
     /// Creates a new application instance based on the provided configuration.
-    pub fn from_config(config: &Config) -> Self {
+    pub fn from_config(config: &Config) -> Result<Self> {
         let mode_config = config.defaults.mode.clone();
         let mut mode = create_mode(&mode_config);
-        mode.initialize(config);
+        mode.initialize(config)?;
 
-        App {
+        Ok(App {
             should_exit: false,
             state: State::default(),
             mode,
@@ -66,7 +65,7 @@ impl App {
             focused_option: 0,
             is_editing: false,
             editing_mode: None,
-        }
+        })
     }
 
     /// Returns the current mode name.
@@ -98,7 +97,7 @@ impl App {
     }
 
     /// Adjust current option value (when editing).
-    pub fn adjust_current_option(&mut self, direction: Direction) {
+    pub fn adjust_current_option(&mut self, direction: Direction) -> Result<()> {
         if self.focused_option == 0 {
             // Cycle through modes
             if let Some(ref mut mode_name) = self.editing_mode {
@@ -116,12 +115,15 @@ impl App {
             // Mode-specific option adjustment
             let option_index = self.focused_option - 1;
             self.mode.adjust_option(option_index, direction);
+            self.mode.reset()?
         }
+
+        Ok(())
     }
 
     /// Select/edit current option.
     /// Returns `Some(mode_name)` if mode should be switched.
-    pub fn select_current_option(&mut self) -> Option<String> {
+    pub fn select_current_option(&mut self) -> Result<Option<String>> {
         if self.focused_option == 0 {
             // Mode selector
             if self.is_editing {
@@ -129,7 +131,7 @@ impl App {
                 if let Some(mode_name) = self.editing_mode.take() {
                     self.is_editing = false;
                     if mode_name != self.current_mode_name() {
-                        return Some(mode_name);
+                        return Ok(Some(mode_name));
                     }
                 }
             } else {
@@ -141,8 +143,9 @@ impl App {
             // Mode-specific option
             let option_index = self.focused_option - 1;
             self.mode.select_option(option_index);
+            self.mode.reset()?;
         }
-        None
+        Ok(None)
     }
 }
 
@@ -153,8 +156,8 @@ impl App {
 /// 2. **Events**: Polls for user input or system events and updates the `app` state.
 ///
 /// # Errors
-/// Returns an `io::Result` if the terminal fails to draw or if event polling fails.
-pub fn run(terminal: &mut DefaultTerminal, app: &mut App, config: &Config) -> io::Result<()> {
+/// Returns an [`anyhow::Result`] if the terminal fails to draw or if event polling fails.
+pub fn run(terminal: &mut DefaultTerminal, app: &mut App, config: &Config) -> Result<()> {
     while !app.should_exit {
         terminal.draw(|frame| ui::draw(frame, app))?;
         events::handle_events(app, config)?;

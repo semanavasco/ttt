@@ -1,5 +1,6 @@
 use std::time::{Duration, Instant};
 
+use anyhow::{Context, Result};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use rand::seq::SliceRandom;
 
@@ -77,7 +78,7 @@ impl Words {
 }
 
 impl Handler for Words {
-    fn initialize(&mut self, config: &Config) {
+    fn initialize(&mut self, config: &Config) -> Result<()> {
         self.start = None;
         self.end = None;
         self.typed_words.clear();
@@ -91,15 +92,16 @@ impl Handler for Words {
         }
 
         let bytes = Resource::get_text(&self.text)
-            .unwrap_or_else(|_| panic!("Couldn't find \"{}\" text", &self.text));
+            .context(format!("Couldn't find \"{}\" text", &self.text))?;
 
         self.dictionary = std::str::from_utf8(&bytes)
-            .expect("Text contains non-utf8 characters")
+            .context("Text contains non-utf8 characters")?
             .lines()
             .map(ToString::to_string)
             .collect();
 
         self.generate_words();
+        Ok(())
     }
 
     fn handle_input(&mut self, key: KeyEvent) -> Action {
@@ -153,12 +155,13 @@ impl Handler for Words {
         Action::None
     }
 
-    fn reset(&mut self) {
+    fn reset(&mut self) -> Result<()> {
         self.generate_words();
         self.start = None;
         self.end = None;
         self.typed_words.clear();
         self.timestamps.clear();
+        Ok(())
     }
 
     fn is_complete(&self) -> bool {
@@ -202,7 +205,6 @@ impl Renderer for Words {
         if index < 4 {
             self.words = WORD_COUNTS[index];
             self.is_editing_custom = false;
-            self.reset();
         } else {
             // Custom - toggle edit mode
             if self.is_editing_custom {
@@ -210,7 +212,6 @@ impl Renderer for Words {
             } else {
                 self.is_editing_custom = true;
                 self.words = self.custom_words;
-                self.reset();
             }
         }
     }
@@ -226,7 +227,6 @@ impl Renderer for Words {
                 }
             }
             self.words = self.custom_words;
-            self.reset();
         }
     }
 
