@@ -135,9 +135,10 @@ cursor = "bg:#f5bde6 fg:#24273a"
 1. Create `src/app/modes/newmode.rs` and implement `Handler` + `Renderer` traits:
 
 ```rust
+use anyhow::Result;
 use crate::app::{
     events::Action,
-    modes::{Direction, GameStats, Handler, OptionGroup, OptionItem, Renderer},
+    modes::{Direction, FooterHint, GameStats, Handler, OptionGroup, OptionItem, Renderer},
     ui::char::StyledChar,
 };
 use crate::config::Config;
@@ -148,7 +149,10 @@ pub struct NewMode {
 }
 
 impl Handler for NewMode {
-    fn initialize(&mut self, config: &Config) { /* load config, generate words */ }
+    fn initialize(&mut self, config: &Config) -> Result<()> {
+        /* load config, generate words */
+        Ok(())
+    }
 
     fn handle_input(&mut self, key: KeyEvent) -> Action {
         // Handle typing, backspace, mode-specific shortcuts
@@ -156,7 +160,10 @@ impl Handler for NewMode {
         Action::None
     }
 
-    fn reset(&mut self) { /* reset to initial state */ }
+    fn reset(&mut self) -> Result<()> {
+        /* reset to initial state */
+        Ok(())
+    }
 
     fn is_complete(&self) -> bool { /* checks for game mode's completion */ }
 
@@ -189,8 +196,8 @@ impl Renderer for NewMode {
 
     fn get_wpm_data(&self) -> Vec<(f64, f64)> { vec![] }
 
-    fn footer_hints(&self) -> Vec<(&'static str, &'static str)> {
-        // Optional mode-specific key hints, e.g., vec![("Ctrl+H", "Clear word")]
+    fn footer_hints(&self) -> Vec<FooterHint> {
+        // Optional mode-specific key hints, e.g., vec![FooterHint::new("Ctrl+H", "Clear word", vec![State::Running])]
         vec![]
     }
 }
